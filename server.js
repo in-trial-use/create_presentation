@@ -12,6 +12,7 @@ const ROOT_DIR = __dirname;
 const PUBLIC_DIR = path.join(ROOT_DIR, "public");
 const DATA_DIR = path.join(ROOT_DIR, "data");
 const MAX_BODY_BYTES = 80 * 1024 * 1024;
+const MAX_LARGE_BODY_BYTES = 300 * 1024 * 1024;
 
 loadEnvFile(path.join(ROOT_DIR, ".env"));
 const DEFAULT_PORT = Number(process.env.PORT || 3000);
@@ -465,7 +466,7 @@ async function readJsonBody(req, res, options = {}) {
   let rawBody;
 
   try {
-    rawBody = await readRequestBody(req, MAX_BODY_BYTES);
+    rawBody = await readRequestBody(req, options.allowLargePdf ? MAX_LARGE_BODY_BYTES : MAX_BODY_BYTES);
   } catch (error) {
     if (error?.code === "REQUEST_TOO_LARGE") {
       const message = options.allowLargePdf
@@ -491,15 +492,17 @@ function readRequestBody(req, maxBytes) {
   return new Promise((resolve, reject) => {
     const chunks = [];
     let totalBytes = 0;
+    let tooLarge = false;
+    let settled = false;
 
     req.on("data", (chunk) => {
+      if (settled || tooLarge) {
+        return;
+      }
       totalBytes += chunk.length;
 
       if (totalBytes > maxBytes) {
-        const error = new Error("Request body is too large.");
-        error.code = "REQUEST_TOO_LARGE";
-        reject(error);
-        req.destroy();
+        tooLarge = true;
         return;
       }
 
@@ -507,10 +510,28 @@ function readRequestBody(req, maxBytes) {
     });
 
     req.on("end", () => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+
+      if (tooLarge) {
+        const error = new Error("Request body is too large.");
+        error.code = "REQUEST_TOO_LARGE";
+        reject(error);
+        return;
+      }
       resolve(Buffer.concat(chunks).toString("utf8"));
     });
+    req.on("error", (error) => {
+      if (settled) {
+        return;
+      }
 
-    req.on("error", reject);
+      settled = true;
+      reject(error);
+    });
   });
 }
 
