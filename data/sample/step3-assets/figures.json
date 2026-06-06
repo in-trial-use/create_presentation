@@ -1,0 +1,48 @@
+[
+  {
+    "placeholder": "Transformerのモデル全体像（Figure 1）",
+    "found": true,
+    "pageNumber": 3,
+    "figureLabel": "Figure 1",
+    "captionText": "Figure 1: The Transformer - model architecture.",
+    "imagePath": "step3-assets/figure-01.png",
+    "widthHint": 820,
+    "detectionMethod": "single-image-page",
+    "detectedLabel": "",
+    "sourceImageIndex": 1,
+    "sourceSize": {
+      "width": 1520,
+      "height": 2239
+    }
+  },
+  {
+    "placeholder": "Scaled Dot-Product AttentionとMulti-Head Attentionの図（Figure 2）",
+    "found": true,
+    "pageNumber": 4,
+    "figureLabel": "Figure 2",
+    "captionText": "Figure 2: (left) Scaled Dot-Product Attention. (right) Multi-Head Attention consists of several",
+    "imagePath": "step3-assets/figure-02.png",
+    "widthHint": 820,
+    "detectionMethod": "largest-image-fallback",
+    "detectedLabel": "",
+    "sourceImageIndex": 2,
+    "sourceSize": {
+      "width": 835,
+      "height": 1282
+    }
+  },
+  {
+    "placeholder": "Table 2 (BLEUスコアと訓練コストの比較)",
+    "found": false,
+    "pageNumber": null,
+    "figureLabel": "",
+    "captionText": ""
+  },
+  {
+    "placeholder": "Table 4 (構文解析タスクでのF1スコア比較)",
+    "found": false,
+    "pageNumber": null,
+    "figureLabel": "",
+    "captionText": ""
+  }
+]
