@@ -81,6 +81,7 @@ function buildSlidePrompt({
 - 画像が必要だが実画像を埋め込めない場合は [図: ここに〇〇の図を入れる] のようなプレースホルダを書く
 - 各スライドは情報を詰め込みすぎず、1枚につき主メッセージは1つ
 - 箇条書きは最大5点程度、各項目は短く
+- ネットワークを選定します。のようなですます調を使わず、ネットワークを選定のような名詞で完結するスタイルを優先
 - editable PPTX で文字が枠からあふれないことを優先し、1枚あたりの文字量を強く抑える
 - h2 見出しは長くても28文字程度、可能なら20文字前後に収める
 - h3 を使う場合も1行で収まる短さにし、20文字程度を目安にする
@@ -139,6 +140,7 @@ function buildSlidePrompt({
 - 数字・比較・改善点を優先して書く
 - 冗長な導入は避ける
 
+
 以下の固定済み先頭部分はアプリ側ですでに挿入します。
 あなたはこの続きだけを出力してください。
 - frontmatter を再出力しない
@@ -148,12 +150,12 @@ function buildSlidePrompt({
 - テンプレート外の style 情報はすべて固定CSS側で管理しているため、style を新たに出力してはいけません。
 
 ${buildFixedSlidePrefix({
-  eventName,
-  eventDate,
-  affiliation,
-  presenterName,
-  title,
-})}
+    eventName,
+    eventDate,
+    affiliation,
+    presenterName,
+    title,
+  })}
 
 参考テンプレート（あなたが続きとして合わせるべき構造）:
 
