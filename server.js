@@ -12,6 +12,7 @@ const ROOT_DIR = __dirname;
 const PUBLIC_DIR = path.join(ROOT_DIR, "public");
 const DATA_DIR = path.join(ROOT_DIR, "data");
 const MAX_BODY_BYTES = 80 * 1024 * 1024;
+const MAX_LARGE_BODY_BYTES = 300 * 1024 * 1024;
 
 loadEnvFile(path.join(ROOT_DIR, ".env"));
 const DEFAULT_PORT = Number(process.env.PORT || 3000);
@@ -23,28 +24,28 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, {
         ok: true,
         configured: Boolean(process.env.GEMINI_API_KEY),
-        model: process.env.GEMINI_MODEL || "gemini-2.5-pro",
+        model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
       });
     }
 
     if (req.method === "POST" && req.url === "/api/analyze") {
-      return handleAnalyze(req, res);
+      return await handleAnalyze(req, res);
     }
 
     if (req.method === "POST" && req.url === "/api/slides") {
-      return handleSlideGeneration(req, res);
+      return await handleSlideGeneration(req, res);
     }
 
     if (req.method === "POST" && req.url === "/api/extract-figures") {
-      return handleFigureExtraction(req, res);
+      return await handleFigureExtraction(req, res);
     }
 
     if (req.method === "POST" && req.url === "/api/regenerate-step3") {
-      return handleStep3Regeneration(req, res);
+      return await handleStep3Regeneration(req, res);
     }
 
     if (req.method === "POST" && req.url === "/api/save-slide") {
-      return handleSaveSlide(req, res);
+      return await handleSaveSlide(req, res);
     }
 
     if (req.method === "GET") {
@@ -83,7 +84,7 @@ async function handleAnalyze(req, res) {
   const pdfBase64 = String(body.pdfBase64 || "").trim();
   const fileName = String(body.fileName || "paper.pdf").trim() || "paper.pdf";
   const mimeType = String(body.mimeType || "application/pdf").trim() || "application/pdf";
-  const model = String(body.model || process.env.GEMINI_MODEL || "gemini-2.5-pro").trim();
+  const model = String(body.model || process.env.GEMINI_MODEL || "gemini-2.5-flash").trim();
 
   if (!prompt) {
     return sendJson(res, 400, { error: "Prompt is required." });
@@ -140,7 +141,7 @@ async function handleSlideGeneration(req, res) {
   const pdfBase64 = String(body.pdfBase64 || "").trim();
   const fileName = String(body.fileName || "paper.pdf").trim() || "paper.pdf";
   const mimeType = String(body.mimeType || "application/pdf").trim() || "application/pdf";
-  const model = String(body.model || process.env.GEMINI_MODEL || "gemini-2.5-pro").trim();
+  const model = String(body.model || process.env.GEMINI_MODEL || "gemini-2.5-flash").trim();
   const eventName = String(body.eventName || "論文紹介").trim() || "論文紹介";
   const eventDate = String(body.eventDate || "").trim() || formatDateForSlide(new Date());
   const affiliation = String(body.affiliation || "所属未入力").trim() || "所属未入力";
@@ -268,7 +269,7 @@ async function handleFigureExtraction(req, res) {
   const fileName = String(body.fileName || "paper.pdf").trim() || "paper.pdf";
   const extractedPages = Array.isArray(body.extractedPages) ? body.extractedPages : [];
   const rawBaseName = String(body.baseName || "sample").trim() || "sample";
-  const model = String(body.model || process.env.GEMINI_MODEL || "gemini-2.5-pro").trim();
+  const model = String(body.model || process.env.GEMINI_MODEL || "gemini-2.5-flash").trim();
 
   if (!step2Markdown) {
     return sendJson(res, 400, {
@@ -344,7 +345,7 @@ async function handleStep3Regeneration(req, res) {
 
   const step2Markdown = String(body.step2Markdown || "").trim();
   const extractedFigures = Array.isArray(body.extractedFigures) ? body.extractedFigures : [];
-  const model = String(body.model || process.env.GEMINI_MODEL || "gemini-2.5-pro").trim();
+  const model = String(body.model || process.env.GEMINI_MODEL || "gemini-2.5-flash").trim();
 
   if (!step2Markdown) {
     return sendJson(res, 400, {
@@ -465,7 +466,7 @@ async function readJsonBody(req, res, options = {}) {
   let rawBody;
 
   try {
-    rawBody = await readRequestBody(req, MAX_BODY_BYTES);
+    rawBody = await readRequestBody(req, options.allowLargePdf ? MAX_LARGE_BODY_BYTES : MAX_BODY_BYTES);
   } catch (error) {
     if (error?.code === "REQUEST_TOO_LARGE") {
       const message = options.allowLargePdf
@@ -491,15 +492,17 @@ function readRequestBody(req, maxBytes) {
   return new Promise((resolve, reject) => {
     const chunks = [];
     let totalBytes = 0;
+    let tooLarge = false;
+    let settled = false;
 
     req.on("data", (chunk) => {
+      if (settled || tooLarge) {
+        return;
+      }
       totalBytes += chunk.length;
 
       if (totalBytes > maxBytes) {
-        const error = new Error("Request body is too large.");
-        error.code = "REQUEST_TOO_LARGE";
-        reject(error);
-        req.destroy();
+        tooLarge = true;
         return;
       }
 
@@ -507,10 +510,28 @@ function readRequestBody(req, maxBytes) {
     });
 
     req.on("end", () => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+
+      if (tooLarge) {
+        const error = new Error("Request body is too large.");
+        error.code = "REQUEST_TOO_LARGE";
+        reject(error);
+        return;
+      }
       resolve(Buffer.concat(chunks).toString("utf8"));
     });
+    req.on("error", (error) => {
+      if (settled) {
+        return;
+      }
 
-    req.on("error", reject);
+      settled = true;
+      reject(error);
+    });
   });
 }
 
@@ -557,6 +578,23 @@ async function generateGeminiText({ apiKey, model, parts }) {
   const output = extractTextFromGemini(responseJson);
 
   if (!output) {
+    // 診断ログ: なぜテキストが返らなかったか調べる
+    const candidates = responseJson?.candidates;
+    if (Array.isArray(candidates)) {
+      candidates.forEach((candidate, i) => {
+        console.error(`[Gemini debug] candidate[${i}] finishReason=${candidate?.finishReason}`);
+        if (candidate?.content?.parts) {
+          console.error(`[Gemini debug] candidate[${i}] parts count=${candidate.content.parts.length}`);
+        } else {
+          console.error(`[Gemini debug] candidate[${i}] has no content.parts`);
+        }
+      });
+    } else {
+      console.error("[Gemini debug] candidates is not an array:", JSON.stringify(responseJson).slice(0, 500));
+    }
+    if (responseJson?.promptFeedback) {
+      console.error("[Gemini debug] promptFeedback:", JSON.stringify(responseJson.promptFeedback));
+    }
     const error = new Error("Gemini returned no text output.");
     error.statusCode = 502;
     throw error;
