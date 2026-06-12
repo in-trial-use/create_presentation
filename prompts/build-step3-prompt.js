@@ -16,6 +16,13 @@ function buildStep3Prompt({ step2Markdown, extractedFigures }) {
 - 入力される step2 の Marp Markdown をベースに、図プレースホルダを実画像に差し替えた step3 の Marp Markdown を生成する
 - frontmatter, class 指定、スライド順序は維持する
 - 図が入ることで崩れやすい場合のみ、周辺テキストを少しだけ整理してよい
+- 図を入れるスライドでは、文字量を減らして図と本文が重ならないようにする
+- HTMLブロック（div 内）では Markdown 記法は機能しない。div内は必ずHTMLタグを使うこと
+- 全スライド共通: step2 のテキストをそのままコピーせず、スライドに収まる量に削ること
+- 1スライドあたりの本文は合計 10行以内（ネスト行を含む）
+- ネスト箇条書きは 1段階まで（孫箇条書き禁止）
+- 親項目1つのサブ項目は 最大2つまで
+- 図がないスライドでも、step2より文字量を減らしてよい
 
 最重要ルール:
 - 出力は Marp Markdown のみ
@@ -24,10 +31,71 @@ function buildStep3Prompt({ step2Markdown, extractedFigures }) {
 - 新たな <style> タグは追加しない
 - title / agenda / content-gray の class 指定と、h1 / h2 / p / ul の構造はできるだけ保つ
 - 図プレースホルダの置換対象は、提供された placeholder と一致する箇所のみ
-- 置換時は Marp の画像記法を使う
-- 基本は \`![w:WIDTH](./path/to/image.png)\` の形を使う
-- WIDTH には widthHint を優先して使う
-- 画像の直後に captionText を短く1行で置く
+- 置換時は、原則として Marp の ![w:WIDTH](...) ではなく、以下のHTML構造を使うこと。
+
+<div class="figure-block">
+  <img src="IMAGE_PATH" alt="CAPTION_TEXT">
+  <div class="figure-caption">CAPTION_TEXT</div>
+</div>
+
+- IMAGE_PATH には imagePath を一字一句そのまま使うこと。
+- CAPTION_TEXT には captionText を短く要約して入れること。
+- 生の ![](...) だけで画像を置かないこと。
+- ![w:WIDTH](...) は原則使わないこと。
+- 図を挿入するレイアウトは以下の基準で選ぶこと:
+  - 本文が短い（箇条書き3点以下）場合 → figure-block を本文の下に置くだけでよい
+  - 本文と図を並べないと両方が収まらない場合のみ → two-column を使う
+  - 迷ったら figure-block 単独を優先すること
+  - two-column を使う場合、column-text の箇条書きは親項目3点まで（ネストはあり）
+-  [絶対厳守] div タグの内側では Markdown 記法は一切レンダリングされない。step2 の Markdown を div 内へ移す際は、必ず以下の変換を行うこと:
+  - 箇条書き「- 項目」 → <li>項目</li>（ul で囲む）
+  - 太字「**太字**」 → <strong>太字</strong>
+  - 段落テキスト → <p>テキスト</p>
+  - 改行 → <br> または別の <p> タグ
+  - ネスト箇条書き「- **見出し**: 詳細」 → <li><strong>見出し</strong>: 詳細</li>
+- 変換例（step2 の Markdown → div 内の正しいHTML）:
+
+NG（Markdown をそのままコピーしてはいけない）:
+<div class="column-text">
+- **項目A**: 説明テキスト
+- **項目B**: 説明テキスト
+</div>
+
+OK（HTML に変換する）:
+<div class="column-text">
+<ul>
+  <li><strong>項目A</strong>: 説明テキスト</li>
+  <li><strong>項目B</strong>: 説明テキスト</li>
+</ul>
+</div>
+
+- two-column の構造（h2見出しは必ず two-column の外に置くこと）:
+- 重要: column-text の </div> は ul の全項目を書き終えてから閉じること。途中で閉じると内容が div 外に漏れる。
+
+## スライドタイトル
+
+<div class="two-column">
+  <div class="column-text">
+<ul>
+  <li><strong>項目1</strong>: 説明</li>
+  <li><strong>項目2</strong>: 説明
+    <ul>
+      <li>サブ項目</li>
+    </ul>
+  </li>
+  <li><strong>項目3</strong>: 説明</li>
+</ul>
+  </div>
+  <div class="column-figure">
+<div class="figure-block">
+  <img src="IMAGE_PATH" alt="CAPTION">
+  <div class="figure-caption">CAPTION</div>
+</div>
+  </div>
+</div>
+
+- 図が本文と重なる場合は、本文を短くしてよい。
+- 図を入れるスライドでは、1スライドあたりの箇条書きは最大3点程度に抑えること。
 - 画像を背景画像として配置しない
 - 画像がない placeholder は、そのまま残す
 - 既存の数式は Markdown の通常文または通常の数式ブロックのまま維持し、HTMLタグ内へ移してはいけない
@@ -40,9 +108,19 @@ function buildStep3Prompt({ step2Markdown, extractedFigures }) {
 - 見出しは1行で収まる短さを優先し、本文や箇条書きも必要なら短く言い換えてよい
 
 画像記法の参考:
-- 通常画像: \`![w:600](./images/example.png)\`
-- 横幅指定で縦横比は維持される
 - 複数画像を無理に詰め込まず、1つの図を素直に1ブロックで置く
+
+数式を含むスライドの例外:
+- 既存の数式は Markdown の通常文または通常の数式ブロックのまま維持する
+- 数式をHTMLタグ内へ移してはいけない
+- 数式を含むスライドでは、無理に2カラムHTMLへ入れない
+- 数式スライドに画像を入れる必要がある場合は、本文を減らし、画像は単独の figure-block として置く
+- 引用ブロック (>) を使って数式を囲ってはいけない
+
+禁止:
+- 新しいCSSや<style>タグは禁止
+- 存在しない画像パスを作らない
+- imagePathを書き換えない
 
 以下が step2 の Marp Markdown です。
 

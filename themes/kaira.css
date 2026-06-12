@@ -250,6 +250,7 @@ section.content-gray {
   --logo-top-offset: -38px;
   background-color: var(--kaira-gray-bg);
   display: flex;
+  overflow: hidden;
   flex-direction: column;
   justify-content: flex-start;
   align-items: stretch;
@@ -404,7 +405,7 @@ section.content-gray :is(pre, marp-pre) {
 
 /* util: top-half two columns, bottom single column */
 .two-top-one-bottom {
-  display: block;
+  display: grid;
   grid-template-columns: 1fr 1fr;
   grid-template-rows: 1fr auto;
   gap: 20px 28px;
@@ -500,6 +501,54 @@ section.content-gray :is(pre, marp-pre) code :is(span, marp-span) {
   font-weight: 400 !important;
   font-kerning: none !important;
 }
+section.content-gray .figure-block {
+  width: 100%;
+  max-width: 100%;
+  max-height: 340px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+section.content-gray .figure-block img {
+  display: flex;
+  max-width: 100% !important;
+  max-height: 360px !important;
+  width: auto !important;
+  height: auto !important;
+  overflow: hidden;
+  object-fit: contain;
+}
+section.content-gray .two-column {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  gap: 20px;
+  align-items: start;
+}
+
+section.content-gray .two-column .column-text {
+  min-width: 0;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+section.content-gray .two-column .column-text ul ul {
+  font-size: 0.75em;
+}
+
+section.content-gray .two-column h2 {
+  padding-right: 0;
+}
+
+section.content-gray .two-column .column-figure {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
 code[data-name] {
   position: relative;
   margin-top: 44px;
