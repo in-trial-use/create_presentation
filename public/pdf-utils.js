@@ -121,7 +121,130 @@ async function extractPageImages(page, ops) {
   const targetOps = [ops.paintImageXObject, ops.paintInlineImageXObject];
   const extractedImages = [];
 
+  // CTM(Current Transformation Matrix)追跡 
+  // PDFの描画は全て現在座標系で行われるがこれがtransformオペレータが呼ばれるたびに変換されるのでどう変換されていったかを追跡する
+  // この追跡によって結果として最終的なページ座標系のどこに図があるかをbboxから求めることができる よってそこをクロップする
+  let ctm = [1, 0, 0, 1, 0, 0];
+  const ctmStack = [];
+
+  function multiplyMatrix(a, b) {
+    return [
+      a[0]*b[0] + a[2]*b[1], a[1]*b[0] + a[3]*b[1],
+      a[0]*b[2] + a[2]*b[3], a[1]*b[2] + a[3]*b[3],
+      a[0]*b[4] + a[2]*b[5] + a[4], a[1]*b[4] + a[3]*b[5] + a[5],
+    ];
+  }
+
+  let depth = 0;
+  let renderedPageCanvas = null; //同じページに複数のForm XObjectがあった場合でも、レンダリングは結果を記録しておけば一回で済む
   for (let index = 0; index < operatorList.fnArray.length; index += 1) {
+
+    const fn = operatorList.fnArray[index];
+
+    if (fn === ops.save) { ctmStack.push([...ctm]); continue; }
+    if (fn === ops.restore) { if (ctmStack.length) ctm = ctmStack.pop(); continue; }
+    if (fn === ops.transform) { ctm = multiplyMatrix(ctm, operatorList.argsArray[index]); continue; }
+
+    if (fn == ops.paintFormXObjectBegin){
+      // いくつかの図で一部しか取れないと言う問題があった。これは PDF では Form XObject と呼ばれる形式があることが原因だった
+      // 直接 PDF のどこに図があるかを特定してクロップすることで一部しか取れなかった図の全体をとることを可能にした
+      // matrix と bbox を取得してクロップ処理
+      depth++;
+      if(depth === 1){
+        const args = operatorList.argsArray[index];
+        const xObjectData = operatorList.argsArray[index - 1]?.[0];
+        const bbox = args?.[1] ?? xObjectData?.bbox;
+        const matrix = args?.[0] ?? xObjectData?.matrix ?? [1, 0, 0, 1, 0, 0];
+        if (!bbox) continue;
+
+        // Form XObject 内の paintImageXObject をカウント
+        let innerImageCount = 0;
+        let innerImageIndex = -1;
+        let innerDepth = 1;
+        for (let j = index + 1; j < operatorList.fnArray.length; j++) {
+          const innerFn = operatorList.fnArray[j];
+          if (innerFn === ops.paintFormXObjectBegin) { innerDepth++; continue; }
+          if (innerFn === ops.paintFormXObjectEnd) {
+            innerDepth--;
+            if (innerDepth === 0) break;
+            continue;
+          }
+          if (innerDepth === 1 && targetOps.includes(innerFn)) {
+            innerImageCount++;
+            innerImageIndex = j;
+          }
+        }
+
+        if (innerImageCount === 1) {
+          // 単純な図：中の画像を直接使う
+          const candidate = operatorList.argsArray[innerImageIndex]?.[0];
+          const imageObject = await resolveImageObject(page, candidate);
+          if (imageObject?.data && imageObject.width && imageObject.height && isUsefulImageCandidate(imageObject.width, imageObject.height)) {
+            const rgbaData = normalizeToRgba(imageObject.data, imageObject.width, imageObject.height);
+            if (rgbaData) {
+              const canvas = document.createElement("canvas");
+              canvas.width = imageObject.width;
+              canvas.height = imageObject.height;
+              canvas.getContext("2d").putImageData(new ImageData(rgbaData, imageObject.width, imageObject.height), 0, 0);
+              const dataUrl = canvas.toDataURL("image/png");
+              extractedImages.push({
+                imageIndex: extractedImages.length + 1,
+                width: imageObject.width,
+                height: imageObject.height,
+                mimeType: "image/png",
+                data: dataUrl.split(",")[1],
+              });
+            }
+          }
+        } else {
+          // 複合図またはベクター：bbox クロップ
+          const m = multiplyMatrix(ctm, matrix);
+          let x1_page = bbox[0] * m[0] + bbox[1] * m[2] + m[4];
+          let y1_page = bbox[0] * m[1] + bbox[1] * m[3] + m[5];
+          let x2_page = bbox[2] * m[0] + bbox[3] * m[2] + m[4];
+          let y2_page = bbox[2] * m[1] + bbox[3] * m[3] + m[5];
+          let x_max = Math.max(x1_page, x2_page), y_max = Math.max(y1_page, y2_page);
+          let x_min = Math.min(x1_page, x2_page), y_min = Math.min(y1_page, y2_page);
+          if (!isUsefulImageCandidate(x_max - x_min, y_max - y_min)) continue;
+
+          if (!renderedPageCanvas) {
+            const viewport = page.getViewport({ scale: 3 });
+            renderedPageCanvas = document.createElement("canvas");
+            renderedPageCanvas.width = viewport.width;
+            renderedPageCanvas.height = viewport.height;
+            await page.render({ canvasContext: renderedPageCanvas.getContext("2d"), viewport }).promise;
+          }
+          const pageHeight = renderedPageCanvas.height / 3;
+
+          const cropCanvas = document.createElement("canvas");
+          cropCanvas.width = Math.round((x_max - x_min) * 3);
+          cropCanvas.height = Math.round((y_max - y_min) * 3);
+          cropCanvas.getContext("2d").drawImage(
+            renderedPageCanvas,
+            x_min * 3, (pageHeight - y_max) * 3,
+            cropCanvas.width, cropCanvas.height,
+            0, 0, cropCanvas.width, cropCanvas.height,
+          );
+          const dataUrl = cropCanvas.toDataURL("image/jpeg", 0.85);
+          extractedImages.push({
+            imageIndex: extractedImages.length + 1,
+            width: cropCanvas.width,
+            height: cropCanvas.height,
+            mimeType: "image/jpeg",
+            data: dataUrl.split(",")[1],
+          });
+        }
+      }
+      continue;
+    }
+    if (fn === ops.paintFormXObjectEnd){
+      depth--;
+      continue;
+    }
+    // depth > 0 なら Form XObject の中なのでスキップ
+    if (depth > 0) continue;
+
+
     if (!targetOps.includes(operatorList.fnArray[index])) {
       continue;
     }
