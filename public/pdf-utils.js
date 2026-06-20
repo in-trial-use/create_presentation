@@ -57,8 +57,8 @@ function assertPdfFile(file) {
 
 async function loadPdfJs() {
   if (!pdfJsPromise) {
-    pdfJsPromise = import("/vendor/pdfjs/build/pdf.mjs").then((pdfjsLib) => {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = "/vendor/pdfjs/build/pdf.worker.min.mjs";
+    pdfJsPromise = import("/vendor/pdfjs/legacy/build/pdf.mjs").then((pdfjsLib) => {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = "/vendor/pdfjs/legacy/build/pdf.worker.min.mjs";
       return pdfjsLib;
     });
   }
