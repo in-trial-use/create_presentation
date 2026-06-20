@@ -7,6 +7,30 @@ const outputElement = document.getElementById("output");
 const submitButton = document.getElementById("submit-button");
 const copyButton = document.getElementById("copy-button");
 
+fileInput.addEventListener("change", () => {
+  const file = fileInput.files?.[0];
+  if (!file) return;
+
+  const shared = window.slideAppShared;
+  if (!shared) return;
+
+  // Fileオブジェクトを他の input type="file" にコピーするためには DataTransfer が必要
+  const dataTransfer = new DataTransfer();
+  dataTransfer.items.add(file);
+
+  // Step 2 の入力欄にセットして change イベントを発火
+  if (shared.slidePdfFileInput) {
+    shared.slidePdfFileInput.files = dataTransfer.files;
+    shared.slidePdfFileInput.dispatchEvent(new Event("change"));
+  }
+
+  // Step 3 の入力欄にセットして change イベントを発火
+  if (shared.step3PdfFileInput) {
+    shared.step3PdfFileInput.files = dataTransfer.files;
+    shared.step3PdfFileInput.dispatchEvent(new Event("change"));
+  }
+});
+
 boot();
 
 form.addEventListener("submit", async (event) => {
