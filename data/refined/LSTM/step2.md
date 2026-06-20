@@ -41,7 +41,7 @@ paginate: true
 ---
 <!-- class: content-gray show-page -->
 
-## 2. 研究背景
+## 研究背景
 <p class="dense-lead">時系列データでは、現在の値だけでなく過去の文脈を使って予測・分類する必要がある。</p>
 
 <div class="two-pane">
@@ -68,7 +68,7 @@ paginate: true
 ---
 <!-- class: content-gray show-page -->
 
-## 3. 解決したい課題
+## 解決したい課題
 <p class="dense-lead">通常のRNNでは、長い系列で遠い過去の情報が学習に効きにくくなる。</p>
 
 <div class="mini-flow">
@@ -100,7 +100,7 @@ paginate: true
 ---
 <!-- class: content-gray show-page -->
 
-## 4. 提案手法の全体像
+## 提案手法の全体像
 <p class="dense-lead">LSTMは、セル状態と3つのゲートで情報の流れを制御する。</p>
 
 <div class="two-pane">
@@ -122,17 +122,12 @@ paginate: true
   </div>
 </div>
 
-<div class="mini-flow">
-  <div class="mini-step"><span class="label">Forget</span><span class="sub">不要な記憶を減らす</span></div>
-  <div class="mini-step"><span class="label">Input</span><span class="sub">候補記憶を作る</span></div>
-  <div class="mini-step"><span class="label">Cell</span><span class="sub">長期記憶を更新</span></div>
-  <div class="mini-step"><span class="label">Output</span><span class="sub">隠れ状態を出す</span></div>
-</div>
+<div class="figure-placeholder">[ここに論文Figure 3: The Architecture of a LSTM Cell を入れる]</div>
 
 ---
 <!-- class: content-gray show-page -->
 
-## 5. 手法の詳細1
+## 手法の詳細1
 <p class="dense-lead">各ゲートは、前時刻の隠れ状態と現在の入力から計算される。</p>
 
 <div class="two-pane">
@@ -164,10 +159,12 @@ $$
 
 <div class="math-note">シグモイド関数は0から1の値を返すため、ゲートは「情報をどれだけ通すか」を表す。</div>
 
+<div class="math-note">記号: x_t は時刻tの入力、h_{t-1} は前時刻の隠れ状態、W_f,W_m は重み、b_f,b_m はバイアス。</div>
+
 ---
 <!-- class: content-gray show-page -->
 
-## 6. 手法の詳細2: 数式の要点
+## 手法の詳細2: 数式の要点
 <p class="dense-lead">セル状態を更新し、更新後の記憶から次時刻へ渡す隠れ状態を作る。</p>
 
 $$
@@ -185,17 +182,19 @@ $$
 
 <div class="two-pane">
   <div class="pane">
-    <h3>セル状態</h3>
+    <h3>状態の意味</h3>
     <ul>
-      <li>古い記憶と新しい候補記憶を足し合わせる</li>
-      <li>長期記憶として次時刻へ渡る</li>
+      <li>c_t: 更新後のセル状態、長期記憶</li>
+      <li>h_t: 次時刻や予測に渡す隠れ状態</li>
+      <li>c~_t: 現在入力から作る候補記憶</li>
     </ul>
   </div>
   <div class="pane emphasis">
-    <h3>隠れ状態</h3>
+    <h3>ゲートと演算</h3>
     <ul>
-      <li>出力ゲートで必要な情報を選ぶ</li>
-      <li>次時刻の計算と予測出力に使われる</li>
+      <li>f_t,m_t,o_t: 忘却・入力・出力ゲート</li>
+      <li>W_c,W_o,b_c,b_o: 学習される重みとバイアス</li>
+      <li>○: 要素ごとの積、sigma: sigmoid関数</li>
     </ul>
   </div>
 </div>
@@ -203,7 +202,7 @@ $$
 ---
 <!-- class: content-gray show-page -->
 
-## 7. 実験設定
+## 実験設定
 <p class="dense-lead">LSTMは、長期依存が重要な時系列予測や自然言語処理で評価される。</p>
 
 <div class="two-pane">
@@ -230,7 +229,7 @@ $$
 ---
 <!-- class: content-gray show-page -->
 
-## 8. 結果
+## 結果
 <p class="dense-lead">LSTMは、長期依存や文脈情報が効くタスクで性能向上を示す。</p>
 
 <div class="layout-grid three">
@@ -253,7 +252,7 @@ $$
 ---
 <!-- class: content-gray show-page -->
 
-## 9. 考察
+## 考察
 <p class="dense-lead">LSTMの強さは、記憶をそのまま上書きせず、ゲートで情報量を調整する点にある。</p>
 
 <div class="two-pane">
@@ -277,10 +276,12 @@ $$
 
 <div class="callout">LSTMは「何を覚えるか」だけでなく「何を忘れるか」も学習するモデルとして理解できる。</div>
 
+<div class="figure-placeholder">[ここに論文Figure 1: LSTM placed in the Machine Learning taxonomy を入れる]</div>
+
 ---
 <!-- class: content-gray show-page -->
 
-## 10. 限界・今後の課題
+## 限界・今後の課題
 <p class="dense-lead">LSTMは万能ではなく、データ量・系列長・計算コストに応じて使い分けが必要である。</p>
 
 <div class="two-pane">
@@ -307,7 +308,7 @@ $$
 ---
 <!-- class: content-gray show-page -->
 
-## 11. まとめ
+## まとめ
 <p class="dense-lead">LSTMは、長期依存を扱うためにセル状態とゲート機構を導入したRNNである。</p>
 
 <div class="summary-grid">

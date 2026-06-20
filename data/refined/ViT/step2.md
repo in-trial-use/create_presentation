@@ -16,7 +16,7 @@ paginate: true
 <div class="bottom-band">
   <div style="width: 100%;">
     <div class="name-box">工学部情報学科2回</div>
-    <div class="name-box">野村 隆晃</div>
+    <div class="name-box">知能太郎</div>
   </div>
 </div>
 
@@ -41,7 +41,7 @@ paginate: true
 ---
 <!-- class: content-gray show-page -->
 
-## 2. 研究背景
+## 研究背景
 <p class="dense-lead">NLPではTransformerが標準になった一方、画像認識ではCNNが長く主流だった。</p>
 
 <div class="two-pane">
@@ -68,7 +68,7 @@ paginate: true
 ---
 <!-- class: content-gray show-page -->
 
-## 3. 解決したい課題
+## 解決したい課題
 <p class="dense-lead">画像をTransformerへ入れるには、2次元画像を1次元トークン列として扱う必要がある。</p>
 
 <div class="two-pane">
@@ -95,15 +95,8 @@ paginate: true
 ---
 <!-- class: content-gray show-page -->
 
-## 4. 提案手法の全体像
+## 提案手法の全体像
 <p class="dense-lead">ViTは画像を固定サイズのパッチに分け、それぞれをTransformerの入力トークンとして扱う。</p>
-
-<div class="mini-flow">
-  <div class="mini-step"><div class="label">Image</div><div class="sub">入力画像</div></div>
-  <div class="mini-step"><div class="label">Patches</div><div class="sub">16x16などに分割</div></div>
-  <div class="mini-step"><div class="label">Embeddings</div><div class="sub">線形射影 + 位置埋め込み</div></div>
-  <div class="mini-step"><div class="label">Encoder</div><div class="sub">Transformerで分類</div></div>
-</div>
 
 <div class="two-pane">
   <div class="pane">
@@ -124,10 +117,12 @@ paginate: true
   </div>
 </div>
 
+<div class="figure-placeholder">[ここに論文Figure 1: Model overview。Image -> Patches -> Transformer Encoder の全体図を入れる]</div>
+
 ---
 <!-- class: content-gray show-page -->
 
-## 5. 手法の詳細1
+## 手法の詳細1
 <p class="dense-lead">2次元画像をパッチ列へ変換し、位置情報を足してTransformerへ入力する。</p>
 
 <div class="equation-grid">
@@ -153,10 +148,12 @@ $$
 
 <div class="math-note">パッチサイズを小さくすると系列長が増え、計算量は増えるが細かい情報を扱いやすくなる。</div>
 
+<div class="math-note">記号: H,W は画像の高さ・幅、P はパッチ一辺、N はパッチ数、x_p^i はi番目のパッチ、E は線形射影、E_pos は位置埋め込み。</div>
+
 ---
 <!-- class: content-gray show-page -->
 
-## 6. 手法の詳細2: Encoder
+## 手法の詳細2: Encoder
 <p class="dense-lead">各層では、LayerNorm、Multi-head Self-Attention、MLP、残差接続を交互に使う。</p>
 
 $$
@@ -174,12 +171,12 @@ $$
   <div class="mini-step"><div class="label">Residual</div><div class="sub">各block後に足し戻す</div></div>
 </div>
 
-<div class="callout">ViTの本体は「画像専用Transformer」ではなく、標準Transformer encoderを画像パッチ列に適用したもの。</div>
+<div class="math-note">記号: z_{l-1} は前層の入力、z'_l はAttention後、z_l はMLP後、l は層番号、LN/MSA/MLPは各処理を表す。</div>
 
 ---
 <!-- class: content-gray show-page -->
 
-## 7. 実験設定
+## 実験設定
 <p class="dense-lead">ViTは大規模データで事前学習し、小さめの下流データセットへ転移する設計で評価される。</p>
 
 <div class="two-pane">
@@ -206,7 +203,7 @@ $$
 ---
 <!-- class: content-gray show-page -->
 
-## 8. 結果
+## 結果
 <p class="dense-lead">十分な規模で事前学習したViTは、複数の画像認識ベンチマークで高い性能を示した。</p>
 
 <div class="layout-grid four">
@@ -221,7 +218,7 @@ $$
 ---
 <!-- class: content-gray show-page -->
 
-## 9. 考察
+## 考察
 <p class="dense-lead">ViTの弱点は画像固有の帰納バイアスが少ないことだが、その分スケールしたときの伸びが大きい。</p>
 
 <div class="two-pane">
@@ -243,12 +240,12 @@ $$
   </div>
 </div>
 
-<div class="figure-placeholder">[図: 論文Figure 4/5。データ規模・事前学習計算量と転移性能の関係]</div>
+<div class="figure-placeholder">[ここに論文Figure 3/5: 事前学習データ規模・計算量と転移性能の関係を入れる]</div>
 
 ---
 <!-- class: content-gray show-page -->
 
-## 10. 限界・今後の課題
+## 限界・今後の課題
 <p class="dense-lead">ViTは強力だが、十分なデータと計算資源が前提になりやすい。</p>
 
 <div class="two-pane">
@@ -275,7 +272,7 @@ $$
 ---
 <!-- class: content-gray show-page -->
 
-## 11. まとめ
+## まとめ
 <p class="dense-lead">ViTは、画像をパッチ列として扱うことでTransformerを画像分類へ直接適用した。</p>
 
 <div class="summary-grid">

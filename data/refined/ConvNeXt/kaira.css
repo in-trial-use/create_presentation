@@ -691,6 +691,42 @@ section.content-gray .dense-list li {
   text-align: center;
 }
 
+.paper-figure {
+  margin-top: 18px;
+  padding: 10px 12px;
+  border: 2px dashed #8db7d2;
+  border-radius: 8px;
+  background: #f8fbfd;
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.paper-figure img {
+  max-width: 48%;
+  max-height: 190px;
+  object-fit: contain;
+  background: #ffffff;
+}
+
+.paper-figure.full {
+  display: block;
+  text-align: center;
+}
+
+.paper-figure.full img {
+  max-width: 100%;
+  max-height: 240px;
+}
+
+.paper-figure .caption {
+  color: var(--kaira-blue-text);
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
 .mini-flow {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

@@ -16,7 +16,7 @@ paginate: true
 <div class="bottom-band">
   <div style="width: 100%;">
     <div class="name-box">京都大学理学部2回</div>
-    <div class="name-box">千葉 一世</div>
+    <div class="name-box">知能太郎</div>
   </div>
 </div>
 
@@ -41,7 +41,7 @@ paginate: true
 ---
 <!-- class: content-gray show-page -->
 
-## 2. 研究背景
+## 研究背景
 <p class="dense-lead">ViT以後、画像分類ではTransformerが強くなったが、汎用視覚backboneではConvNet的な性質も重要だった。</p>
 
 <div class="two-pane">
@@ -68,7 +68,7 @@ paginate: true
 ---
 <!-- class: content-gray show-page -->
 
-## 3. 解決したい課題
+## 解決したい課題
 <p class="dense-lead">Transformerが強い理由を、attentionそのものだけで説明してよいのかを切り分けたい。</p>
 
 <div class="two-pane">
@@ -95,15 +95,8 @@ paginate: true
 ---
 <!-- class: content-gray show-page -->
 
-## 4. 提案手法の全体像
+## 提案手法の全体像
 <p class="dense-lead">標準ResNetを出発点に、Swin Transformerの設計に近づける変更を段階的に入れる。</p>
-
-<div class="mini-flow">
-  <div class="mini-step"><div class="label">Training</div><div class="sub">強い学習recipe</div></div>
-  <div class="mini-step"><div class="label">Macro</div><div class="sub">stage ratio / patchify</div></div>
-  <div class="mini-step"><div class="label">Block</div><div class="sub">depthwise / inverted</div></div>
-  <div class="mini-step"><div class="label">Micro</div><div class="sub">GELU / LN / downsample</div></div>
-</div>
 
 <div class="two-pane">
   <div class="pane">
@@ -124,10 +117,12 @@ paginate: true
   </div>
 </div>
 
+<div class="figure-placeholder">[ここに論文Figure 2: ResNetからConvNeXtへ向かうmodernization roadmap を入れる]</div>
+
 ---
 <!-- class: content-gray show-page -->
 
-## 5. 手法の詳細1
+## 手法の詳細1
 <p class="dense-lead">まず学習recipeとmacro designを、Transformer時代の設定へ揃える。</p>
 
 <div class="layout-grid three">
@@ -153,7 +148,7 @@ paginate: true
 ---
 <!-- class: content-gray show-page -->
 
-## 6. 手法の詳細2: Block設計
+## 手法の詳細2: Block設計
 <p class="dense-lead">ConvNeXt blockは、Transformer blockの設計思想をConvNetの部品で写し取る。</p>
 
 <div class="two-pane">
@@ -175,12 +170,12 @@ paginate: true
   </div>
 </div>
 
-<div class="figure-placeholder">[図: 論文Figure 3/4。ResNeXt blockからConvNeXt blockへの変更]</div>
+<div class="figure-placeholder">[ここに論文Figure 3/4: Block modifications と ResNet/Swin/ConvNeXt block比較を入れる]</div>
 
 ---
 <!-- class: content-gray show-page -->
 
-## 7. 実験設定
+## 実験設定
 <p class="dense-lead">ConvNeXtはImageNet分類、COCO検出、ADE20Kセグメンテーションで評価される。</p>
 
 <div class="two-pane">
@@ -207,7 +202,7 @@ paginate: true
 ---
 <!-- class: content-gray show-page -->
 
-## 8. 結果
+## 結果
 <p class="dense-lead">ConvNeXtは同程度の複雑さのSwin Transformerに対して、ImageNetで同等以上の性能を示す。</p>
 
 <div class="layout-grid three">
@@ -226,7 +221,7 @@ paginate: true
 ---
 <!-- class: content-gray show-page -->
 
-## 9. 考察
+## 考察
 <p class="dense-lead">ConvNeXtの結果は、Transformerの強さの一部が設計・学習recipeにも由来することを示す。</p>
 
 <div class="two-pane">
@@ -253,7 +248,7 @@ paginate: true
 ---
 <!-- class: content-gray show-page -->
 
-## 10. 限界・今後の課題
+## 限界・今後の課題
 <p class="dense-lead">ConvNeXtはConvNetの有効性を示すが、Transformerを不要にする結論ではない。</p>
 
 <div class="two-pane">
@@ -280,7 +275,7 @@ paginate: true
 ---
 <!-- class: content-gray show-page -->
 
-## 11. まとめ
+## まとめ
 <p class="dense-lead">ConvNeXtは、Transformer時代の設計を取り入れた純ConvNetとして提案された。</p>
 
 <div class="summary-grid">

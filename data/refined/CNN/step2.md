@@ -41,7 +41,7 @@ paginate: true
 ---
 <!-- class: content-gray show-page -->
 
-## 2. 研究背景
+## 研究背景
 <p class="dense-lead">画像認識では、画素の並びや近傍関係を保ったまま特徴を抽出することが重要になる。</p>
 
 <div class="two-pane">
@@ -68,7 +68,7 @@ paginate: true
 ---
 <!-- class: content-gray show-page -->
 
-## 3. 解決したい課題
+## 解決したい課題
 <p class="dense-lead">画像を全結合層で直接扱うと、重み数が急増し、過学習しやすくなる。</p>
 
 <div class="layout-grid three">
@@ -92,15 +92,8 @@ paginate: true
 ---
 <!-- class: content-gray show-page -->
 
-## 4. 提案手法の全体像
+## 提案手法の全体像
 <p class="dense-lead">CNNは、局所特徴を抽出し、圧縮し、最後に分類する流れで構成される。</p>
-
-<div class="mini-flow">
-  <div class="mini-step"><span class="label">入力画像</span><span class="sub">縦 x 横 x 色</span></div>
-  <div class="mini-step"><span class="label">畳み込み</span><span class="sub">局所特徴を抽出</span></div>
-  <div class="mini-step"><span class="label">プーリング</span><span class="sub">特徴を圧縮</span></div>
-  <div class="mini-step"><span class="label">全結合</span><span class="sub">クラスを判定</span></div>
-</div>
 
 <div class="two-pane">
   <div class="pane">
@@ -121,10 +114,12 @@ paginate: true
   </div>
 </div>
 
+<div class="figure-placeholder">[ここに論文Fig. 2: A simple CNN architecture を入れる]</div>
+
 ---
 <!-- class: content-gray show-page -->
 
-## 5. 手法の詳細1
+## 手法の詳細1
 <p class="dense-lead">畳み込み層は、学習可能なフィルタを画像上で走査して特徴マップを作る。</p>
 
 <div class="two-pane">
@@ -146,12 +141,12 @@ paginate: true
   </div>
 </div>
 
-<div class="figure-placeholder">[図: 畳み込み演算とプーリングの概念図]</div>
+<div class="figure-placeholder">[ここに論文Fig. 4: A visual representation of a convolutional layer を入れる]</div>
 
 ---
 <!-- class: content-gray show-page -->
 
-## 6. 手法の詳細2: サイズ計算
+## 手法の詳細2: サイズ計算
 <p class="dense-lead">畳み込み後の出力サイズは、入力サイズとカーネル・パディング・ストライドで決まる。</p>
 
 $$
@@ -166,6 +161,7 @@ $$
       <li>R: 受容野、つまりカーネルサイズ</li>
       <li>Z: ゼロパディングの量</li>
       <li>S: ストライド、つまり移動量</li>
+      <li>式の値: 出力特徴マップの一辺のサイズ</li>
     </ul>
   </div>
   <div class="pane emphasis">
@@ -181,7 +177,7 @@ $$
 ---
 <!-- class: content-gray show-page -->
 
-## 7. 実験設定
+## 実験設定
 <p class="dense-lead">CNNの効果は、画像分類の流れの中で各層がどの役割を持つかを確認する形で示される。</p>
 
 <div class="two-pane">
@@ -208,7 +204,7 @@ $$
 ---
 <!-- class: content-gray show-page -->
 
-## 8. 結果
+## 結果
 <p class="dense-lead">CNNは、全結合ANNより画像の構造を活かしながら効率的に特徴を作れる。</p>
 
 <div class="layout-grid three">
@@ -226,12 +222,12 @@ $$
   </div>
 </div>
 
-<div class="figure-placeholder">[図: 学習済みフィルタの可視化]</div>
+<div class="figure-placeholder">[ここに論文Fig. 3: Activations from the first convolutional layer を入れる]</div>
 
 ---
 <!-- class: content-gray show-page -->
 
-## 9. 考察
+## 考察
 <p class="dense-lead">CNNの本質は、画像の性質に合う制約を入れて、少ない重みで良い特徴を作る点にある。</p>
 
 <div class="two-pane">
@@ -258,7 +254,7 @@ $$
 ---
 <!-- class: content-gray show-page -->
 
-## 10. 限界・今後の課題
+## 限界・今後の課題
 <p class="dense-lead">基本的なCNNにも、設計やタスクによって注意すべき限界がある。</p>
 
 <div class="two-pane">
@@ -285,7 +281,7 @@ $$
 ---
 <!-- class: content-gray show-page -->
 
-## 11. まとめ
+## まとめ
 <p class="dense-lead">CNNは、画像の局所構造を活かして特徴抽出と分類を効率化するアーキテクチャである。</p>
 
 <div class="summary-grid">

@@ -16,7 +16,7 @@ paginate: true
 <div class="bottom-band">
   <div style="width: 100%;">
     <div class="name-box">同志社大学　工学部</div>
-    <div class="name-box">銅　使者</div>
+    <div class="name-box">知能太郎</div>
   </div>
 </div>
 
@@ -41,7 +41,7 @@ paginate: true
 ---
 <!-- class: content-gray show-page -->
 
-## 2. 研究背景
+## 研究背景
 <p class="dense-lead">画像認識では、ネットワークを深くすることでより複雑な特徴を学習できると期待されていた。</p>
 
 <div class="two-pane">
@@ -68,7 +68,7 @@ paginate: true
 ---
 <!-- class: content-gray show-page -->
 
-## 3. 解決したい課題
+## 解決したい課題
 <p class="dense-lead">単純な深層化では、訓練誤差まで悪化するDegradation問題が起こる。</p>
 
 <div class="two-pane">
@@ -95,15 +95,8 @@ paginate: true
 ---
 <!-- class: content-gray show-page -->
 
-## 4. 提案手法の全体像
+## 提案手法の全体像
 <p class="dense-lead">ResNetは、望ましい写像そのものではなく、入力との差分である残差を学習する。</p>
-
-<div class="mini-flow">
-  <div class="mini-step"><span class="label">入力</span><span class="sub">xをブロックへ入れる</span></div>
-  <div class="mini-step"><span class="label">残差</span><span class="sub">F(x)を畳み込みで学習</span></div>
-  <div class="mini-step"><span class="label">Shortcut</span><span class="sub">xをそのまま渡す</span></div>
-  <div class="mini-step"><span class="label">加算</span><span class="sub">F(x)+xを出力</span></div>
-</div>
 
 <div class="two-pane">
   <div class="pane">
@@ -122,10 +115,12 @@ paginate: true
   </div>
 </div>
 
+<div class="figure-placeholder">[ここに論文Figure 2: Residual learning - a building block を入れる]</div>
+
 ---
 <!-- class: content-gray show-page -->
 
-## 5. 手法の詳細1
+## 手法の詳細1
 <p class="dense-lead">残差ブロックでは、ショートカット接続により入力をバイパスして足し戻す。</p>
 
 <div class="two-pane">
@@ -147,12 +142,12 @@ paginate: true
   </div>
 </div>
 
-<div class="figure-placeholder">[図: 論文Figure 2。残差ブロックの概念図]</div>
+<div class="figure-placeholder">[ここに論文Figure 3: VGG-19 / 34-layer plain / 34-layer residual の比較図を入れる]</div>
 
 ---
 <!-- class: content-gray show-page -->
 
-## 6. 手法の詳細2: 数式の要点
+## 手法の詳細2: 数式の要点
 <p class="dense-lead">残差学習では、目標写像H(x)を残差F(x)と入力xの和として表す。</p>
 
 $$
@@ -165,17 +160,19 @@ $$
 
 <div class="two-pane">
   <div class="pane">
-    <h3>恒等写像が望ましい場合</h3>
+    <h3>記号の意味</h3>
     <ul>
-      <li>H(x)=xを直接学ぶ必要がない</li>
-      <li>F(x)=0を学べばよい</li>
+      <li>x: blockへの入力特徴</li>
+      <li>H(x): block全体で実現したい写像</li>
+      <li>F(x): 層が学習する残差成分</li>
     </ul>
   </div>
   <div class="pane emphasis">
-    <h3>実装上の単純さ</h3>
+    <h3>読み方</h3>
     <ul>
-      <li>追加するのはショートカットと加算</li>
-      <li>パラメータを増やさない恒等ショートカットも使える</li>
+      <li>H(x)=x が望ましいなら F(x)=0 を学べばよい</li>
+      <li>+x はショートカットで足し戻す入力</li>
+      <li>恒等ショートカットなら追加パラメータは不要</li>
     </ul>
   </div>
 </div>
@@ -183,7 +180,7 @@ $$
 ---
 <!-- class: content-gray show-page -->
 
-## 7. 実験設定
+## 実験設定
 <p class="dense-lead">残差学習の効果を、Plain Netや既存モデルとの比較で検証する。</p>
 
 <div class="two-pane">
@@ -210,7 +207,7 @@ $$
 ---
 <!-- class: content-gray show-page -->
 
-## 8. 結果
+## 結果
 <p class="dense-lead">ResNetでは、深いモデルが浅いモデルより良くなり、深さの恩恵を受けられた。</p>
 
 <div class="layout-grid three">
@@ -230,12 +227,12 @@ $$
   </div>
 </div>
 
-<div class="figure-placeholder">[図: 論文Figure 4 / Table 4。Plain NetとResNetの比較]</div>
+<div class="figure-placeholder">[ここに論文Figure 4 / Table 4: Plain NetとResNetの学習曲線・性能比較を入れる]</div>
 
 ---
 <!-- class: content-gray show-page -->
 
-## 9. 考察
+## 考察
 <p class="dense-lead">ResNetの層の応答はPlain Netより小さく、残差学習の仮説を支持する。</p>
 
 <div class="two-pane">
@@ -257,12 +254,12 @@ $$
   </div>
 </div>
 
-<div class="figure-placeholder">[図: 論文Figure 7。各層の応答の大きさ]</div>
+<div class="figure-placeholder">[ここに論文Figure 7: Standard deviations of layer responses を入れる]</div>
 
 ---
 <!-- class: content-gray show-page -->
 
-## 10. 限界・今後の課題
+## 限界・今後の課題
 <p class="dense-lead">ResNetは深層化を可能にしたが、深さだけで全てが解決するわけではない。</p>
 
 <div class="two-pane">
@@ -289,7 +286,7 @@ $$
 ---
 <!-- class: content-gray show-page -->
 
-## 11. まとめ
+## まとめ
 <p class="dense-lead">ResNetは、残差学習とショートカットにより、超深層ネットワークの最適化を可能にした。</p>
 
 <div class="summary-grid">
