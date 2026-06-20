@@ -1,0 +1,18 @@
+[
+  {
+    "placeholder": "ここにTransformerのモデルアーキテクチャ図（論文Figure 1）を入れる",
+    "found": true,
+    "pageNumber": 3,
+    "figureLabel": "Figure 1",
+    "captionText": "Figure 1: The Transformer - model architecture.",
+    "imagePath": "step3-assets/figure-01.png",
+    "widthHint": 820,
+    "detectionMethod": "single-image-page",
+    "detectedLabel": "",
+    "sourceImageIndex": 1,
+    "sourceSize": {
+      "width": 1520,
+      "height": 2239
+    }
+  }
+]
