@@ -30,209 +30,221 @@ paginate: true
 
 <div class="dashed-box">
   <div class="agenda-list">
-    <div class="agenda-item">1. RNNの課題とLSTMの位置づけ</div>
-    <div class="agenda-item">2. セル状態と3つのゲート</div>
-    <div class="agenda-item">3. LSTMの計算式</div>
-    <div class="agenda-item">4. 応用例とモデル選択</div>
-    <div class="agenda-item">5. まとめ</div>
+    <div class="agenda-item">1. 研究背景</div>
+    <div class="agenda-item">2. 解決したい課題</div>
+    <div class="agenda-item">3. 提案手法の全体像</div>
+    <div class="agenda-item">4. 手法の詳細と数式</div>
+    <div class="agenda-item">5. 実験・結果・考察・まとめ</div>
   </div>
 </div>
 
 ---
 <!-- class: content-gray show-page -->
 
-## 1. RNNの課題とLSTMの位置づけ
-<p class="dense-lead">RNNは時系列データを扱えるが、長い系列では遠い過去の情報を学習に反映しにくい。</p>
+## 2. 研究背景
+<p class="dense-lead">時系列データでは、現在の値だけでなく過去の文脈を使って予測・分類する必要がある。</p>
 
 <div class="two-pane">
   <div class="pane">
     <h3>時系列モデルの流れ</h3>
     <ul>
-      <li>従来はARIMAなどの統計モデルが主流</li>
-      <li>データ量と計算資源の増加により機械学習モデルが普及</li>
-      <li>RNNは内部状態により、過去の情報を次時刻へ渡せる</li>
+      <li>ARIMAなどの統計モデルは、単純な系列に対して解釈しやすい</li>
+      <li>データ量と計算資源の増加により、機械学習モデルの利用が広がった</li>
+      <li>RNNは隠れ状態を通じて、過去の情報を次時刻へ渡せる</li>
     </ul>
   </div>
   <div class="pane emphasis">
-    <h3>RNNの弱点</h3>
+    <h3>RNNの位置づけ</h3>
     <ul>
-      <li>誤差を時間方向にさかのぼって伝播する</li>
-      <li>系列が長くなるほど勾配が小さくなりやすい</li>
-      <li>長期的な依存関係を学習しにくい</li>
+      <li>系列を時間方向に展開して学習する</li>
+      <li>自然言語や発電量予測など、順序が意味を持つデータに向く</li>
+      <li>長い文脈を扱うには、通常のRNNだけでは不十分になりやすい</li>
     </ul>
   </div>
 </div>
 
-<div class="callout">LSTMは、長く残す情報と捨てる情報を分けて扱うことで、この弱点に対応する。</div>
-
-<ul class="dense-list">
-  <li>ポイントは、RNNの「過去を持てる」という性質を残しつつ、長期記憶を失いにくくすること。</li>
-</ul>
+<div class="callout">LSTMは、RNNの「系列を扱える」性質を残しつつ、長期記憶を扱いやすくしたモデルである。</div>
 
 ---
 <!-- class: content-gray show-page -->
 
-## 勾配消失問題
-<p class="dense-lead">長い系列では、過去の時刻へ戻るほど勾配が小さくなり、重み更新にほとんど効かなくなる。</p>
+## 3. 解決したい課題
+<p class="dense-lead">通常のRNNでは、長い系列で遠い過去の情報が学習に効きにくくなる。</p>
 
 <div class="mini-flow">
-  <div class="mini-step">
-    <span class="label">長い系列</span>
-    <span class="sub">時間方向に深いネットワークになる</span>
+  <div class="mini-step"><span class="label">長い系列</span><span class="sub">時間方向に深い計算グラフ</span></div>
+  <div class="mini-step"><span class="label">逆伝播</span><span class="sub">過去へ誤差を戻す</span></div>
+  <div class="mini-step"><span class="label">勾配消失</span><span class="sub">更新量が小さくなる</span></div>
+  <div class="mini-step"><span class="label">長期依存</span><span class="sub">遠い情報を使いにくい</span></div>
+</div>
+
+<div class="two-pane">
+  <div class="pane emphasis">
+    <h3>問題の本質</h3>
+    <ul>
+      <li>過去の情報を保持したい時刻と忘れたい時刻が混在する</li>
+      <li>単純な隠れ状態更新では、重要な情報も上書きされやすい</li>
+      <li>長期依存を扱うには、記憶の保持を明示的に制御したい</li>
+    </ul>
   </div>
-  <div class="mini-step">
-    <span class="label">誤差逆伝播</span>
-    <span class="sub">各時刻をさかのぼって学習する</span>
-  </div>
-  <div class="mini-step">
-    <span class="label">勾配が縮小</span>
-    <span class="sub">過去へ行くほど値が小さくなる</span>
-  </div>
-  <div class="mini-step">
-    <span class="label">長期依存を失う</span>
-    <span class="sub">遠い過去の情報を使いにくい</span>
+  <div class="pane">
+    <h3>必要な性質</h3>
+    <ul>
+      <li>不要な情報を忘れる</li>
+      <li>必要な情報を追加する</li>
+      <li>保持した記憶から出力を作る</li>
+    </ul>
   </div>
 </div>
 
-<div class="figure-placeholder">[図: 機械学習におけるLSTMの位置付け (Figure 1)]</div>
-
 ---
 <!-- class: content-gray show-page -->
 
-## 2. セル状態と3つのゲート
-<p class="dense-lead">LSTMは、長期記憶を運ぶセル状態と、情報を制御する3種類のゲートから構成される。</p>
+## 4. 提案手法の全体像
+<p class="dense-lead">LSTMは、セル状態と3つのゲートで情報の流れを制御する。</p>
 
 <div class="two-pane">
   <div class="pane emphasis">
     <h3>セル状態</h3>
     <ul>
-      <li>長期記憶を担う経路</li>
-      <li>重要な情報を比較的そのまま伝える</li>
-      <li>勾配が流れやすい道を作る</li>
+      <li>長期記憶を運ぶ主要な経路</li>
+      <li>重要な情報を比較的そのまま次時刻へ渡す</li>
+      <li>勾配が流れやすい道として働く</li>
     </ul>
   </div>
   <div class="pane">
-    <h3>ゲートの役割</h3>
+    <h3>3つのゲート</h3>
     <ul>
-      <li>不要な過去情報を忘れる</li>
-      <li>現在の入力から必要な情報を追加する</li>
-      <li>次の隠れ状態として出力する情報を選ぶ</li>
+      <li>忘却ゲート: 過去の記憶をどれだけ残すか</li>
+      <li>入力ゲート: 新しい候補記憶をどれだけ加えるか</li>
+      <li>出力ゲート: 隠れ状態として何を出すか</li>
     </ul>
   </div>
 </div>
 
-<div class="callout">単純に状態を上書きするのではなく、記憶を「残す・加える・出す」量を学習する。</div>
-
 <div class="mini-flow">
-  <div class="mini-step"><span class="label">忘れる</span><span class="sub">不要な過去情報を減らす</span></div>
-  <div class="mini-step"><span class="label">加える</span><span class="sub">現在の入力から候補を作る</span></div>
-  <div class="mini-step"><span class="label">保持する</span><span class="sub">セル状態を更新する</span></div>
-  <div class="mini-step"><span class="label">出力する</span><span class="sub">隠れ状態として渡す</span></div>
+  <div class="mini-step"><span class="label">Forget</span><span class="sub">不要な記憶を減らす</span></div>
+  <div class="mini-step"><span class="label">Input</span><span class="sub">候補記憶を作る</span></div>
+  <div class="mini-step"><span class="label">Cell</span><span class="sub">長期記憶を更新</span></div>
+  <div class="mini-step"><span class="label">Output</span><span class="sub">隠れ状態を出す</span></div>
 </div>
 
 ---
 <!-- class: content-gray show-page -->
 
-## LSTMセルの構造
-<p class="dense-lead">セル状態を中心に、忘却ゲート・入力ゲート・出力ゲートが段階的に情報を制御する。</p>
+## 5. 手法の詳細1
+<p class="dense-lead">各ゲートは、前時刻の隠れ状態と現在の入力から計算される。</p>
 
 <div class="two-pane">
   <div class="pane">
-    <h3>3つの制御</h3>
+    <h3>忘却ゲート</h3>
     <ul>
-      <li><b>忘却ゲート</b>: 過去のセル状態から不要な情報を削る</li>
-      <li><b>入力ゲート</b>: 現在の入力から追加する情報を選ぶ</li>
-      <li><b>出力ゲート</b>: 更新後のセル状態から隠れ状態を作る</li>
+      <li>古いセル状態をどれだけ残すかを決める</li>
+      <li>値は0から1で、0に近いほど忘れる</li>
     </ul>
+
+$$
+f_t = \sigma(W_f [h_{t-1}, x_t] + b_f)
+$$
+
   </div>
   <div class="pane emphasis">
-    <h3>見方</h3>
+    <h3>入力ゲート</h3>
     <ul>
-      <li>各ゲートは0から1の値で情報量を調整する</li>
-      <li>セル状態は長期記憶、隠れ状態は次時刻への出力に対応する</li>
-      <li>長期依存を扱うための中心はセル状態にある</li>
+      <li>現在の入力から候補記憶を作る</li>
+      <li>その候補をどれだけ採用するかを決める</li>
     </ul>
+
+$$
+m_t = \sigma(W_m [h_{t-1}, x_t] + b_m)
+$$
+
   </div>
 </div>
 
-<div class="figure-placeholder">[図: LSTMセルのアーキテクチャ (Figure 3)]</div>
+<div class="math-note">シグモイド関数は0から1の値を返すため、ゲートは「情報をどれだけ通すか」を表す。</div>
 
 ---
 <!-- class: content-gray show-page -->
 
-## 3. LSTMの計算式
-<p class="dense-lead">各ゲートは、前時刻の隠れ状態と現在の入力から計算される。</p>
-
-### 忘却ゲート
-過去のセル状態をどれだけ残すかを決める。
+## 6. 手法の詳細2: 数式の要点
+<p class="dense-lead">セル状態を更新し、更新後の記憶から次時刻へ渡す隠れ状態を作る。</p>
 
 $$
-f_t = \sigma(W_f \cdot [h_{t-1}, x_t] + b_f)
+\tilde{c}_t = \tanh(W_c [h_{t-1}, x_t] + b_c)
 $$
-
-### 入力ゲート
-新しい候補記憶と、その採用量を決める。
-
-$$
-\tilde{c}_t = \tanh(W_c \cdot [h_{t-1}, x_t] + b_c)
-$$
-
-$$
-m_t = \sigma(W_m \cdot [h_{t-1}, x_t] + b_m)
-$$
-
-<div class="math-note">読み方: シグモイド関数は0から1の値を返すため、ゲートは「どれだけ通すか」を表す重みとして働く。</div>
-
----
-<!-- class: content-gray show-page -->
-
-## セル状態と出力の更新
-<p class="dense-lead">忘却ゲートと入力ゲートでセル状態を更新し、出力ゲートで隠れ状態を作る。</p>
-
-### セル状態の更新
-古い記憶を残す量と、新しい記憶を足す量を組み合わせる。
 
 $$
 c_t = f_t \circ c_{t-1} + m_t \circ \tilde{c}_t
 $$
 
-### 出力ゲートと隠れ状態
-更新後のセル状態から、次の時刻へ渡す情報を選ぶ。
-
 $$
-o_t = \sigma(W_o \cdot [h_{t-1}, x_t] + b_o)
-$$
-
-$$
+o_t = \sigma(W_o [h_{t-1}, x_t] + b_o), \quad
 h_t = o_t \circ \tanh(c_t)
 $$
 
-<div class="math-note">読み方: セル状態は長期記憶、隠れ状態は次時刻へ渡す短期的な出力として使われる。</div>
+<div class="two-pane">
+  <div class="pane">
+    <h3>セル状態</h3>
+    <ul>
+      <li>古い記憶と新しい候補記憶を足し合わせる</li>
+      <li>長期記憶として次時刻へ渡る</li>
+    </ul>
+  </div>
+  <div class="pane emphasis">
+    <h3>隠れ状態</h3>
+    <ul>
+      <li>出力ゲートで必要な情報を選ぶ</li>
+      <li>次時刻の計算と予測出力に使われる</li>
+    </ul>
+  </div>
+</div>
 
 ---
 <!-- class: content-gray show-page -->
 
-## 4. 応用例
-<p class="dense-lead">LSTMは、長期依存が重要になる時系列予測や自然言語処理で利用された。</p>
+## 7. 実験設定
+<p class="dense-lead">LSTMは、長期依存が重要な時系列予測や自然言語処理で評価される。</p>
 
 <div class="two-pane">
   <div class="pane">
-    <h3>太陽光発電量の予測</h3>
+    <h3>太陽光発電量予測</h3>
     <ul>
       <li>過去の気象データから将来の発電量を予測</li>
-      <li>4層のLSTMネットワークを利用</li>
-      <li>21発電所、990日分の時系列データを扱う</li>
-      <li>比較対象は物理法則ベースの予測モデル</li>
+      <li>複数発電所・複数日分の時系列データを扱う</li>
+      <li>物理法則ベースの予測モデルと比較する</li>
     </ul>
   </div>
   <div class="pane">
-    <h3>自然言語処理: ELMo</h3>
+    <h3>自然言語処理</h3>
     <ul>
       <li>双方向LSTMで前後の文脈を扱う</li>
-      <li>文脈に応じた単語ベクトルを生成</li>
-      <li>SQuADなどのベンチマークで性能向上を示した</li>
-      <li>単語の意味を文脈に応じて変えられる</li>
+      <li>文脈に応じた単語表現を作る</li>
+      <li>SQuADなどのベンチマークで評価される</li>
     </ul>
+  </div>
+</div>
+
+<div class="callout">評価の見どころは、長い文脈や複数時系列の情報を、単純な統計モデルよりうまく使えるかである。</div>
+
+---
+<!-- class: content-gray show-page -->
+
+## 8. 結果
+<p class="dense-lead">LSTMは、長期依存や文脈情報が効くタスクで性能向上を示す。</p>
+
+<div class="layout-grid three">
+  <div class="insight-card">
+    <h3>時系列予測</h3>
+    <p>複数の入力系列から非線形な変化を学習し、発電量予測に利用できる。</p>
+  </div>
+  <div class="insight-card emphasis">
+    <h3>文脈表現</h3>
+    <p>双方向LSTMにより、単語の意味を前後文脈に応じて変化させられる。</p>
+  </div>
+  <div class="insight-card">
+    <h3>比較結果</h3>
+    <p>長期情報が必要な場面では、単純なRNNや固定表現より有利になる。</p>
   </div>
 </div>
 
@@ -241,71 +253,76 @@ $$
 ---
 <!-- class: content-gray show-page -->
 
-## LSTMは万能ではない
-<p class="dense-lead">LSTMは強力だが、常に最良の選択とは限らず、データの性質に応じた使い分けが必要になる。</p>
+## 9. 考察
+<p class="dense-lead">LSTMの強さは、記憶をそのまま上書きせず、ゲートで情報量を調整する点にある。</p>
 
 <div class="two-pane">
   <div class="pane emphasis">
-    <h3>LSTMの強み</h3>
+    <h3>効いている点</h3>
     <ul>
-      <li>複数時系列にまたがる非線形パターンを扱える</li>
-      <li>長期依存や文脈情報を学習しやすい</li>
-      <li>特徴量設計の一部をモデルに任せられる</li>
+      <li>セル状態が長期記憶の経路を作る</li>
+      <li>忘却・入力・出力を別々に学習できる</li>
+      <li>遠い過去の情報を必要な分だけ残しやすい</li>
     </ul>
   </div>
   <div class="pane">
-    <h3>統計モデルの強み</h3>
+    <h3>読み取り方</h3>
     <ul>
-      <li>単純な単変量時系列では同等以上の場合がある</li>
-      <li>計算コストが低い</li>
-      <li>過学習リスクを抑えやすい</li>
+      <li>単純な短期パターンなら統計モデルで十分な場合がある</li>
+      <li>複数要因や文脈依存があるほどLSTMの利点が出やすい</li>
+      <li>ゲートは解釈の入口にもなる</li>
     </ul>
   </div>
 </div>
 
-<div class="callout">結論: タスクの複雑さ、データ量、系列の長さに応じてモデルを選択する。</div>
-
-<ul class="dense-list">
-  <li>比較の観点は、精度だけでなく、解釈しやすさ、計算コスト、過学習リスクにも置かれる。</li>
-</ul>
+<div class="callout">LSTMは「何を覚えるか」だけでなく「何を忘れるか」も学習するモデルとして理解できる。</div>
 
 ---
 <!-- class: content-gray show-page -->
 
-## 今後の発展
-<p class="dense-lead">LSTMの系列処理の考え方は、AttentionやTransformerなどの発展にもつながっている。</p>
+## 10. 限界・今後の課題
+<p class="dense-lead">LSTMは万能ではなく、データ量・系列長・計算コストに応じて使い分けが必要である。</p>
 
-<ul class="dense-list">
-  <li><b>Deep-LSTM</b>: LSTM層を複数重ねることで、より複雑なデータ構造を表現する。</li>
-  <li><b>Attention機構</b>: 系列のどの部分に注目すべきかを学習する仕組み。</li>
-  <li><b>Transformer</b>: Attentionを中心に発展し、現代の自然言語処理で広く使われる。</li>
-  <li><b>BERT</b>: Transformerベースのエンコーダーモデルで、文脈に応じた表現を学習する。</li>
-</ul>
-
-<div class="callout">LSTMは、長期依存を扱う系列モデルとして、後続の高度なモデルを理解する土台にもなる。</div>
-
-<div class="mini-flow">
-  <div class="mini-step"><span class="label">LSTM</span><span class="sub">長期依存を扱う</span></div>
-  <div class="mini-step"><span class="label">Attention</span><span class="sub">重要部分へ注目する</span></div>
-  <div class="mini-step"><span class="label">Transformer</span><span class="sub">Attentionを中心化</span></div>
-  <div class="mini-step"><span class="label">BERT</span><span class="sub">文脈表現を学習</span></div>
+<div class="two-pane">
+  <div class="pane">
+    <h3>限界</h3>
+    <ul>
+      <li>統計モデルより計算コストが高い</li>
+      <li>短く単純な系列では過剰なモデルになりうる</li>
+      <li>非常に長い系列では、さらに別の工夫が必要になる</li>
+    </ul>
+  </div>
+  <div class="pane emphasis">
+    <h3>今後の方向</h3>
+    <ul>
+      <li>タスクに応じたモデル選択</li>
+      <li>双方向化や多層化による表現力の向上</li>
+      <li>Attention系モデルとの比較・併用</li>
+    </ul>
+  </div>
 </div>
 
+<div class="callout">入門者向けには、LSTMを「長く残す記憶をゲートで守るRNN」と押さえると流れを追いやすい。</div>
+
 ---
 <!-- class: content-gray show-page -->
 
-## 5. まとめ
-<p class="dense-lead">LSTMは、RNNの長期依存の弱点に対して、セル状態とゲート機構で対応するモデルである。</p>
+## 11. まとめ
+<p class="dense-lead">LSTMは、長期依存を扱うためにセル状態とゲート機構を導入したRNNである。</p>
 
-<ul class="dense-list">
-  <li><b>セル状態</b>により、重要な情報を長く保持する経路を作る。</li>
-  <li><b>忘却・入力・出力ゲート</b>により、情報を残す量、加える量、出す量を学習する。</li>
-  <li>時系列予測や自然言語処理で利用され、長期依存や文脈を扱う場面で有効性を示した。</li>
-  <li>一方で、単純な時系列では統計モデルも有力であり、問題に応じた使い分けが重要である。</li>
-</ul>
+<div class="summary-grid">
+  <div class="insight-card">
+    <h3>背景</h3>
+    <p>時系列・自然言語では過去の文脈を扱う必要がある。</p>
+  </div>
+  <div class="insight-card emphasis">
+    <h3>方法</h3>
+    <p>セル状態と3つのゲートで、記憶の保持・追加・出力を制御する。</p>
+  </div>
+  <div class="insight-card">
+    <h3>結論</h3>
+    <p>長期依存が重要なタスクで、通常のRNNより扱いやすい。</p>
+  </div>
+</div>
 
-<div class="callout">ポイント: LSTMは「すべてを記憶する」のではなく、「必要な情報を選んで保持する」RNNである。</div>
-
-<ul class="dense-list">
-  <li>この仕組みにより、長い系列でも遠い過去の情報を扱いやすくする。</li>
-</ul>
+<div class="callout">標準構成では、背景から課題、手法、実験、考察、限界までを一続きで説明する。</div>

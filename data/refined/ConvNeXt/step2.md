@@ -30,18 +30,18 @@ paginate: true
 
 <div class="dashed-box">
   <div class="agenda-list">
-    <div class="agenda-item">1. 背景: ViT/Swin後のConvNet</div>
-    <div class="agenda-item">2. ResNetを近代化するRoadmap</div>
-    <div class="agenda-item">3. ConvNeXt blockの設計</div>
-    <div class="agenda-item">4. ImageNet・下流タスクの結果</div>
-    <div class="agenda-item">5. まとめ</div>
+    <div class="agenda-item">1. 研究背景</div>
+    <div class="agenda-item">2. 解決したい課題</div>
+    <div class="agenda-item">3. 提案手法の全体像</div>
+    <div class="agenda-item">4. 手法の詳細と数式</div>
+    <div class="agenda-item">5. 実験・結果・考察・まとめ</div>
   </div>
 </div>
 
 ---
 <!-- class: content-gray show-page -->
 
-## 1. 背景: ConvNetは本当に古いのか
+## 2. 研究背景
 <p class="dense-lead">ViT以後、画像分類ではTransformerが強くなったが、汎用視覚backboneではConvNet的な性質も重要だった。</p>
 
 <div class="two-pane">
@@ -58,53 +58,68 @@ paginate: true
     <ul>
       <li>ViTは大規模分類で強いが、vanilla構成は汎用backboneで難点がある</li>
       <li>Swinは局所windowなどConvNet priorsを再導入した</li>
-      <li>性能差の理由がattentionだけなのかを問い直す</li>
+      <li>性能差の理由がattentionだけなのかを問い直す流れがある</li>
     </ul>
   </div>
 </div>
 
-<div class="callout">ConvNeXtの目的は、純ConvNetを現代的な設計に更新したとき、Transformerとどこまで競えるかを検証すること。</div>
+<div class="callout">ConvNeXtは、純ConvNetを現代的な設計に更新したとき、Transformerとどこまで競えるかを検証する。</div>
 
 ---
 <!-- class: content-gray show-page -->
 
-## 論文の進め方
-<p class="dense-lead">標準ResNetを出発点に、Swin Transformerの設計に近づける変更を段階的に入れていく。</p>
+## 3. 解決したい課題
+<p class="dense-lead">Transformerが強い理由を、attentionそのものだけで説明してよいのかを切り分けたい。</p>
+
+<div class="two-pane">
+  <div class="pane emphasis">
+    <h3>比較の難しさ</h3>
+    <ul>
+      <li>Transformerは新しい学習recipeも同時に導入した</li>
+      <li>macro designやmicro designもResNetとは異なる</li>
+      <li>単純なResNet対Swinでは、差の原因が混ざる</li>
+    </ul>
+  </div>
+  <div class="pane">
+    <h3>論文の問い</h3>
+    <ul>
+      <li>ConvNetも同じ設計原理を取り込めば強くなるか</li>
+      <li>純ConvNetのままSwinと競えるか</li>
+      <li>検出・セグメンテーションでも汎用backboneとして使えるか</li>
+    </ul>
+  </div>
+</div>
+
+<div class="callout">課題は、ResNetを段階的に近代化し、どの変更が性能差に効くかを見ること。</div>
+
+---
+<!-- class: content-gray show-page -->
+
+## 4. 提案手法の全体像
+<p class="dense-lead">標準ResNetを出発点に、Swin Transformerの設計に近づける変更を段階的に入れる。</p>
 
 <div class="mini-flow">
-  <div class="mini-step">
-    <div class="label">ResNet</div>
-    <div class="sub">強い学習recipe</div>
-  </div>
-  <div class="mini-step">
-    <div class="label">Macro</div>
-    <div class="sub">stage ratio / patchify</div>
-  </div>
-  <div class="mini-step">
-    <div class="label">Block</div>
-    <div class="sub">depthwise / inverted</div>
-  </div>
-  <div class="mini-step">
-    <div class="label">Micro</div>
-    <div class="sub">GELU / LN / downsample</div>
-  </div>
+  <div class="mini-step"><div class="label">Training</div><div class="sub">強い学習recipe</div></div>
+  <div class="mini-step"><div class="label">Macro</div><div class="sub">stage ratio / patchify</div></div>
+  <div class="mini-step"><div class="label">Block</div><div class="sub">depthwise / inverted</div></div>
+  <div class="mini-step"><div class="label">Micro</div><div class="sub">GELU / LN / downsample</div></div>
 </div>
 
 <div class="two-pane">
   <div class="pane">
-    <h3>比較の考え方</h3>
+    <h3>Modernization</h3>
     <ul>
       <li>ResNet-50 / Swin-T程度のFLOPsで主に検証</li>
       <li>ImageNet-1Kで各変更の効果を確認</li>
       <li>FLOPsを大きく外さないように調整</li>
     </ul>
   </div>
-  <div class="pane">
+  <div class="pane emphasis">
     <h3>到達点</h3>
     <ul>
       <li>標準ConvNetモジュールだけで構成</li>
       <li>Transformer的なmacro/micro designを取り入れる</li>
-      <li>最終的にConvNeXt familyとして拡張する</li>
+      <li>ConvNeXt familyとして拡張する</li>
     </ul>
   </div>
 </div>
@@ -112,119 +127,50 @@ paginate: true
 ---
 <!-- class: content-gray show-page -->
 
-## 2. Training Recipe
-<p class="dense-lead">まず、アーキテクチャ変更の前に現代的な学習設定をResNetへ適用する。</p>
+## 5. 手法の詳細1
+<p class="dense-lead">まず学習recipeとmacro designを、Transformer時代の設定へ揃える。</p>
 
 <div class="layout-grid three">
   <div class="insight-card">
-    <h3>Optimizer</h3>
-    <p>AdamWを使い、300 epochsの長い学習を行う。</p>
+    <h3>Training recipe</h3>
+    <p>AdamW、300 epochs、Mixup、Cutmix、RandAugmentなどを導入する。</p>
+    <span class="big-number">78.8%</span>
   </div>
   <div class="insight-card">
-    <h3>Augmentation</h3>
-    <p>Mixup、Cutmix、RandAugment、Random Erasingなどを採用する。</p>
+    <h3>Stage ratio</h3>
+    <p>ResNet-50の(3,4,6,3)をSwin風の(3,3,9,3)へ変更する。</p>
+    <span class="big-number">79.4%</span>
   </div>
   <div class="insight-card emphasis">
-    <h3>Accuracy</h3>
-    <span class="big-number">78.8%</span>
-    <p class="card-note">ResNet-50が76.1%から改善</p>
-  </div>
-</div>
-
-<div class="callout">この時点で、比較対象のConvNet側もTransformer時代の学習recipeに揃えることになる。</div>
-
-<div class="two-pane">
-  <div class="pane">
-    <h3>追加される正則化</h3>
-    <ul>
-      <li>Stochastic Depth</li>
-      <li>Label Smoothing</li>
-    </ul>
-  </div>
-  <div class="pane emphasis">
-    <h3>この段階の意味</h3>
-    <ul>
-      <li>ResNetそのものを強い条件で再評価する</li>
-      <li>後続の構造変更の効果を見やすくする</li>
-    </ul>
-  </div>
-</div>
-
----
-<!-- class: content-gray show-page -->
-
-## Macro Design
-<p class="dense-lead">ネットワーク全体のstage構成とstemを、Swin Transformerに近い形へ寄せる。</p>
-
-<div class="two-pane">
-  <div class="pane">
-    <h3>Stage ratio</h3>
-    <ul>
-      <li>ResNet-50のblock数: (3, 4, 6, 3)</li>
-      <li>Swin風に (3, 3, 9, 3) へ変更</li>
-      <li>accuracy: 78.8% → 79.4%</li>
-    </ul>
-  </div>
-  <div class="pane emphasis">
     <h3>Patchify stem</h3>
-    <ul>
-      <li>ResNet stemを4x4 stride 4 convolutionへ置換</li>
-      <li>Swinのpatchifyに近い入口にする</li>
-      <li>accuracy: 79.4% → 79.5%</li>
-    </ul>
+    <p>stemを4x4 stride 4 convolutionへ置き換える。</p>
+    <span class="big-number">79.5%</span>
   </div>
 </div>
 
-<div class="figure-placeholder">[図: 論文Figure 2。ResNetからConvNeXtへ向かうmodernization roadmap]</div>
+<div class="callout">アーキテクチャだけでなく、学習条件と大きな構成を揃えることから始める。</div>
 
 ---
 <!-- class: content-gray show-page -->
 
-## 3. Block Design
+## 6. 手法の詳細2: Block設計
 <p class="dense-lead">ConvNeXt blockは、Transformer blockの設計思想をConvNetの部品で写し取る。</p>
 
 <div class="two-pane">
   <div class="pane">
-    <h3>Depthwise convolution</h3>
+    <h3>Spatial / channel mixing</h3>
     <ul>
-      <li>空間方向のmixingをchannelごとに行う</li>
-      <li>1x1 convolutionと組み合わせ、空間mixingとchannel mixingを分離</li>
-      <li>幅をSwin-T相当に広げ、80.5%へ改善</li>
+      <li>depthwise convolutionで空間方向をmixingする</li>
+      <li>1x1 convolutionでchannel方向をmixingする</li>
+      <li>self-attentionの代わりにConvNet部品で分離を実現する</li>
     </ul>
   </div>
   <div class="pane emphasis">
-    <h3>Inverted bottleneck</h3>
+    <h3>Inverted bottleneck + large kernel</h3>
     <ul>
       <li>MLP側の隠れ次元を入力より広くする</li>
-      <li>MobileNetV2系の設計ともつながる</li>
-      <li>accuracy: 80.5% → 80.6%</li>
-    </ul>
-  </div>
-</div>
-
-<div class="callout">self-attentionの代わりにdepthwise convolutionを使い、ConvNetのまま「空間mixing」と「channel mixing」を分ける。</div>
-
----
-<!-- class: content-gray show-page -->
-
-## Large Kernel
-<p class="dense-lead">Transformerの広い受容野に対応する要素として、大きな畳み込みkernelを再検討する。</p>
-
-<div class="two-pane">
-  <div class="pane">
-    <h3>位置の変更</h3>
-    <ul>
-      <li>depthwise convをblockの前方へ移動</li>
-      <li>TransformerでMSAがMLPより前に来る構造と対応</li>
-      <li>一時的に79.9%まで性能が下がる</li>
-    </ul>
-  </div>
-  <div class="pane emphasis">
-    <h3>Kernel size</h3>
-    <ul>
-      <li>3, 5, 7, 9, 11を比較</li>
-      <li>7x7で性能改善が飽和</li>
-      <li>accuracy: 79.9% → 80.6%</li>
+      <li>depthwise convを前方へ移動する</li>
+      <li>7x7 kernelで性能改善が飽和する</li>
     </ul>
   </div>
 </div>
@@ -234,130 +180,113 @@ paginate: true
 ---
 <!-- class: content-gray show-page -->
 
-## Micro Design
-<p class="dense-lead">activation、normalization、downsamplingもTransformer時代の設計に合わせて見直す。</p>
-
-<div class="layout-grid three">
-  <div class="insight-card">
-    <h3>GELU + fewer activations</h3>
-    <p>ReLUをGELUへ置換し、block内のactivationを1つに減らす。</p>
-    <span class="big-number">81.3%</span>
-  </div>
-  <div class="insight-card">
-    <h3>Fewer norms + LN</h3>
-    <p>normalizationを減らし、BatchNormからLayerNormへ置き換える。</p>
-    <span class="big-number">81.5%</span>
-  </div>
-  <div class="insight-card emphasis">
-    <h3>Separate downsampling</h3>
-    <p>stage間に独立したdownsampling layerを置く。</p>
-    <span class="big-number">82.0%</span>
-  </div>
-</div>
-
-<div class="callout">最終的なConvNeXt-Tは、同程度のFLOPsのSwin-T 81.3%を上回る結果になった。</div>
-
-<div class="mini-flow">
-  <div class="mini-step">
-    <div class="label">Activation</div>
-    <div class="sub">GELUを1つ残す</div>
-  </div>
-  <div class="mini-step">
-    <div class="label">Norm</div>
-    <div class="sub">BN中心からLNへ</div>
-  </div>
-  <div class="mini-step">
-    <div class="label">Downsample</div>
-    <div class="sub">stage間で分離</div>
-  </div>
-  <div class="mini-step">
-    <div class="label">ConvNeXt</div>
-    <div class="sub">最終blockへ到達</div>
-  </div>
-</div>
-
----
-<!-- class: content-gray show-page -->
-
-## 4. ImageNetでの結果
-<p class="dense-lead">ConvNeXtは同程度の複雑さのSwin Transformerに対して、ImageNetで同等以上の性能を示す。</p>
-
-<div class="layout-grid three">
-  <div class="insight-card">
-    <h3>ConvNeXt-T</h3>
-    <span class="big-number">82.1%</span>
-    <p class="card-note">Swin-T: 81.3%, 4.5G FLOPs</p>
-  </div>
-  <div class="insight-card">
-    <h3>ConvNeXt-B</h3>
-    <span class="big-number">85.1%</span>
-    <p class="card-note">384 resolution, Swin-Bより高精度・高throughput</p>
-  </div>
-  <div class="insight-card emphasis">
-    <h3>ConvNeXt-XL</h3>
-    <span class="big-number">87.8%</span>
-    <p class="card-note">ImageNet-22K pre-training後のtop-1</p>
-  </div>
-</div>
-
-<div class="callout">論文は、適切に設計されたConvNetは大規模事前学習でもTransformerに劣らずスケールすると述べている。</div>
-
-<div class="mini-flow">
-  <div class="mini-step">
-    <div class="label">1K trained</div>
-    <div class="sub">T/S/B/LでSwin同等以上</div>
-  </div>
-  <div class="mini-step">
-    <div class="label">Throughput</div>
-    <div class="sub">同程度FLOPsで良好</div>
-  </div>
-  <div class="mini-step">
-    <div class="label">22K pre-trained</div>
-    <div class="sub">大規模化でさらに改善</div>
-  </div>
-  <div class="mini-step">
-    <div class="label">Scaling</div>
-    <div class="sub">XLが87.8%へ到達</div>
-  </div>
-</div>
-
----
-<!-- class: content-gray show-page -->
-
-## 下流タスクでの結果
-<p class="dense-lead">ConvNeXtは画像分類だけでなく、COCO検出・ADE20KセグメンテーションでもSwinと競合する。</p>
+## 7. 実験設定
+<p class="dense-lead">ConvNeXtはImageNet分類、COCO検出、ADE20Kセグメンテーションで評価される。</p>
 
 <div class="two-pane">
   <div class="pane">
-    <h3>COCO detection / segmentation</h3>
+    <h3>ImageNet</h3>
     <ul>
-      <li>Swinと同じmulti-scale trainingやAdamW設定で比較</li>
-      <li>同程度の複雑さで同等以上のbox AP / mask AP</li>
-      <li>大きなモデルではSwinより明確に高い場合がある</li>
+      <li>ImageNet-1Kで分類性能を評価</li>
+      <li>ImageNet-22Kで事前学習し、ImageNet-1Kへfine-tune</li>
+      <li>ConvNeXt-T/S/B/L/XLを構成する</li>
     </ul>
   </div>
-  <div class="pane emphasis">
-    <h3>ADE20K semantic segmentation</h3>
+  <div class="pane">
+    <h3>Downstream tasks</h3>
     <ul>
-      <li>UperNetを用いてmIoUを比較</li>
-      <li>ImageNet-22K事前学習のConvNeXtが強い</li>
-      <li>標準ConvNetの単純さと効率を保つ</li>
+      <li>COCOで物体検出・instance segmentationを評価</li>
+      <li>ADE20Kでsemantic segmentationを評価</li>
+      <li>Swin Transformerと同程度の複雑さで比較する</li>
     </ul>
   </div>
 </div>
 
-<div class="figure-placeholder">[表: 論文Table 3/4。COCOとADE20KにおけるSwinとConvNeXtの比較]</div>
+<div class="callout">分類だけでなく、汎用backboneとして使えるかが重要な評価軸になる。</div>
 
 ---
 <!-- class: content-gray show-page -->
 
-## 5. まとめ
-<p class="dense-lead">ConvNeXtは、Transformer時代の設計を取り入れた「2020年代のConvNet」として提案された。</p>
+## 8. 結果
+<p class="dense-lead">ConvNeXtは同程度の複雑さのSwin Transformerに対して、ImageNetで同等以上の性能を示す。</p>
+
+<div class="layout-grid three">
+  <div class="insight-card"><h3>ConvNeXt-T</h3><span class="big-number">82.1%</span><p class="card-note">Swin-T: 81.3%, 4.5G FLOPs</p></div>
+  <div class="insight-card"><h3>ConvNeXt-B</h3><span class="big-number">85.1%</span><p class="card-note">384 resolution</p></div>
+  <div class="insight-card emphasis"><h3>ConvNeXt-XL</h3><span class="big-number">87.8%</span><p class="card-note">ImageNet-22K pre-training後</p></div>
+</div>
+
+<div class="mini-flow">
+  <div class="mini-step"><div class="label">1K trained</div><div class="sub">Swin同等以上</div></div>
+  <div class="mini-step"><div class="label">Throughput</div><div class="sub">同程度FLOPsで良好</div></div>
+  <div class="mini-step"><div class="label">COCO</div><div class="sub">同等以上のAP</div></div>
+  <div class="mini-step"><div class="label">ADE20K</div><div class="sub">競争的なmIoU</div></div>
+</div>
+
+---
+<!-- class: content-gray show-page -->
+
+## 9. 考察
+<p class="dense-lead">ConvNeXtの結果は、Transformerの強さの一部が設計・学習recipeにも由来することを示す。</p>
+
+<div class="two-pane">
+  <div class="pane emphasis">
+    <h3>重要な観察</h3>
+    <ul>
+      <li>ConvNetも現代的なrecipeで大きく改善する</li>
+      <li>Swinに似たmacro/micro designはConvNetでも有効</li>
+      <li>attentionなしでも同等以上に競える場面がある</li>
+    </ul>
+  </div>
+  <div class="pane">
+    <h3>ConvNeXtらしさ</h3>
+    <ul>
+      <li>標準ConvNetモジュールだけで構成される</li>
+      <li>shifted windowやrelative position biasなどの専用機構を使わない</li>
+      <li>実装の単純さと効率を保つ</li>
+    </ul>
+  </div>
+</div>
+
+<div class="callout">ConvNeXtは、SwinをConvNet側から再解釈したモデルとして読むと流れを追いやすい。</div>
+
+---
+<!-- class: content-gray show-page -->
+
+## 10. 限界・今後の課題
+<p class="dense-lead">ConvNeXtはConvNetの有効性を示すが、Transformerを不要にする結論ではない。</p>
+
+<div class="two-pane">
+  <div class="pane">
+    <h3>限界</h3>
+    <ul>
+      <li>大規模学習では計算資源とデータが必要</li>
+      <li>globalな関係を扱う柔軟性はTransformerに利点がある場合がある</li>
+      <li>タスクによって最適なbackboneは変わる</li>
+    </ul>
+  </div>
+  <div class="pane emphasis">
+    <h3>今後の方向</h3>
+    <ul>
+      <li>ConvNetとTransformerの設計原理の整理</li>
+      <li>より効率的なbackbone設計</li>
+      <li>検出・セグメンテーションでのさらなる検証</li>
+    </ul>
+  </div>
+</div>
+
+<div class="callout">論文の主張は「畳み込みはまだ重要であり、設計次第で2020年代でも強い」という点にある。</div>
+
+---
+<!-- class: content-gray show-page -->
+
+## 11. まとめ
+<p class="dense-lead">ConvNeXtは、Transformer時代の設計を取り入れた純ConvNetとして提案された。</p>
 
 <div class="summary-grid">
   <div class="insight-card">
-    <h3>問い</h3>
-    <p>性能差はattention固有の優位性なのか、設計・学習recipeの差なのかを切り分ける。</p>
+    <h3>背景</h3>
+    <p>ViT/Swinの成功後、ConvNetの価値と設計差を見直す必要があった。</p>
   </div>
   <div class="insight-card emphasis">
     <h3>方法</h3>
@@ -369,4 +298,4 @@ paginate: true
   </div>
 </div>
 
-<div class="callout">輪読では「ConvNeXtはSwinをConvNet側から再解釈したモデル」と見ると、変更の流れを追いやすい。</div>
+<div class="callout">標準構成にすると、背景から課題、手法、実験、考察、限界までを一続きで説明できる。</div>

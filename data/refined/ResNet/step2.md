@@ -30,86 +30,103 @@ paginate: true
 
 <div class="dashed-box">
   <div class="agenda-list">
-    <div class="agenda-item">1. 深層化の背景と劣化問題</div>
-    <div class="agenda-item">2. 深層残差学習と残差ブロック</div>
-    <div class="agenda-item">3. ResNetの構成と実験</div>
-    <div class="agenda-item">4. 結果と考察</div>
-    <div class="agenda-item">5. まとめ</div>
+    <div class="agenda-item">1. 研究背景</div>
+    <div class="agenda-item">2. 解決したい課題</div>
+    <div class="agenda-item">3. 提案手法の全体像</div>
+    <div class="agenda-item">4. 手法の詳細と数式</div>
+    <div class="agenda-item">5. 実験・結果・考察・まとめ</div>
   </div>
 </div>
 
 ---
 <!-- class: content-gray show-page -->
 
-## 1. 深層化の背景と劣化問題
-<p class="dense-lead">ネットワークを深くすると表現力は上がるはずだが、単純な深層化には限界がある。</p>
+## 2. 研究背景
+<p class="dense-lead">画像認識では、ネットワークを深くすることでより複雑な特徴を学習できると期待されていた。</p>
 
 <div class="two-pane">
   <div class="pane">
     <h3>深層化の期待</h3>
     <ul>
-      <li>VGGネットのように、層を深くすることで表現力が上がる</li>
-      <li>より複雑な特徴を段階的に学習できる</li>
-      <li>画像認識精度の改善が期待される</li>
+      <li>浅い層ではエッジなどの単純特徴を学習する</li>
+      <li>深い層では物体の部品や意味的特徴を扱える</li>
+      <li>VGGのように層を深くする設計が有効だった</li>
     </ul>
   </div>
   <div class="pane emphasis">
-    <h3>深層化の障壁</h3>
+    <h3>当時の課題意識</h3>
     <ul>
-      <li>勾配消失・爆発により学習が不安定になる</li>
-      <li>バッチ正規化などで緩和できる問題もある</li>
-      <li>それでもDegradation問題が残る</li>
+      <li>深いネットワークほど表現力は高いはず</li>
+      <li>しかし単純に深くするだけでは性能が上がらない</li>
+      <li>最適化を助ける構造が必要になる</li>
     </ul>
   </div>
 </div>
 
-<div class="callout">ResNetの主題は、層を深くしたときに訓練誤差まで悪化するDegradation問題を解くこと。</div>
+<div class="callout">ResNetは、超深層ネットワークを学習可能にするための残差学習を提案する。</div>
 
 ---
 <!-- class: content-gray show-page -->
 
-## Degradation問題
-<p class="dense-lead">深いモデルは浅いモデル以上の性能を出せるはずなのに、実際には訓練誤差が悪化することがある。</p>
+## 3. 解決したい課題
+<p class="dense-lead">単純な深層化では、訓練誤差まで悪化するDegradation問題が起こる。</p>
 
-<ul class="dense-list">
-  <li>理論上は、深いモデルが浅いモデルに「何もしない層」を追加すれば、少なくとも同等の性能を出せるはず。</li>
-  <li>しかし、最適化が難しいため、深いPlain Netの方が訓練誤差まで悪化する。</li>
-  <li>これは過学習ではなく、訓練誤差の段階で起きる最適化上の問題として扱われる。</li>
-</ul>
+<div class="two-pane">
+  <div class="pane emphasis">
+    <h3>Degradation問題</h3>
+    <ul>
+      <li>深いPlain Netが浅いPlain Netより悪くなる</li>
+      <li>検証誤差だけでなく訓練誤差も悪化する</li>
+      <li>過学習ではなく最適化の問題として扱われる</li>
+    </ul>
+  </div>
+  <div class="pane">
+    <h3>直感的な矛盾</h3>
+    <ul>
+      <li>深いモデルは浅いモデルを内包できるはず</li>
+      <li>不要な層が恒等写像になれば同等性能を出せるはず</li>
+      <li>実際にはその恒等写像を学ぶことが難しい</li>
+    </ul>
+  </div>
+</div>
 
 <div class="figure-placeholder">[図: 論文Figure 1。20層と56層のPlain Netの誤差グラフ]</div>
 
 ---
 <!-- class: content-gray show-page -->
 
-## 2. 深層残差学習
-<p class="dense-lead">ResNetは、出力そのものではなく、入力との差分である残差を学習させる。</p>
+## 4. 提案手法の全体像
+<p class="dense-lead">ResNetは、望ましい写像そのものではなく、入力との差分である残差を学習する。</p>
 
-従来は、入力 $x$ から望ましい写像 $H(x)$ を直接学習する。
+<div class="mini-flow">
+  <div class="mini-step"><span class="label">入力</span><span class="sub">xをブロックへ入れる</span></div>
+  <div class="mini-step"><span class="label">残差</span><span class="sub">F(x)を畳み込みで学習</span></div>
+  <div class="mini-step"><span class="label">Shortcut</span><span class="sub">xをそのまま渡す</span></div>
+  <div class="mini-step"><span class="label">加算</span><span class="sub">F(x)+xを出力</span></div>
+</div>
 
-$$
-H(x)
-$$
-
-本研究では、残差を次のように定義する。
-
-$$
-F(x) := H(x) - x
-$$
-
-その結果、元の写像は次の形で表せる。
-
-$$
-H(x) = F(x) + x
-$$
-
-<div class="math-note">見方: 恒等写像が望ましい場合、H(x)=x を直接学ぶ代わりに、残差 F(x)=0 を学べばよい。</div>
+<div class="two-pane">
+  <div class="pane">
+    <h3>Plain Block</h3>
+    <ul>
+      <li>層を重ねて出力H(x)を直接学習する</li>
+      <li>深くなるほど最適化が難しくなる</li>
+    </ul>
+  </div>
+  <div class="pane emphasis">
+    <h3>Residual Block</h3>
+    <ul>
+      <li>F(x)+xの形で入力を足し戻す</li>
+      <li>不要な層はF(x)=0に近づければよい</li>
+    </ul>
+  </div>
+</div>
 
 ---
 <!-- class: content-gray show-page -->
 
-## 残差ブロック
-<p class="dense-lead">入力をバイパスするショートカットコネクションを追加し、残差を足し戻す。</p>
+## 5. 手法の詳細1
+<p class="dense-lead">残差ブロックでは、ショートカット接続により入力をバイパスして足し戻す。</p>
 
 <div class="two-pane">
   <div class="pane">
@@ -121,11 +138,11 @@ $$
     </ul>
   </div>
   <div class="pane emphasis">
-    <h3>なぜ効くか</h3>
+    <h3>効果</h3>
     <ul>
-      <li>追加層が不要なら残差をゼロに近づければよい</li>
       <li>恒等写像を直接学ぶより最適化しやすい</li>
-      <li>深いネットワークでも性能劣化を避けやすい</li>
+      <li>勾配がショートカット経路を通りやすくなる</li>
+      <li>深いモデルでも性能劣化を避けやすい</li>
     </ul>
   </div>
 </div>
@@ -135,35 +152,39 @@ $$
 ---
 <!-- class: content-gray show-page -->
 
-## ResNetアーキテクチャ
-<p class="dense-lead">ResNetは、VGGベースのPlain Netにショートカットを追加したシンプルな構成である。</p>
+## 6. 手法の詳細2: 数式の要点
+<p class="dense-lead">残差学習では、目標写像H(x)を残差F(x)と入力xの和として表す。</p>
+
+$$
+F(x) := H(x) - x
+$$
+
+$$
+H(x) = F(x) + x
+$$
 
 <div class="two-pane">
   <div class="pane">
-    <h3>Plain Network</h3>
+    <h3>恒等写像が望ましい場合</h3>
     <ul>
-      <li>34層のVGG風ネットワーク</li>
-      <li>ショートカットなし</li>
-      <li>深くすると劣化問題が生じやすい</li>
+      <li>H(x)=xを直接学ぶ必要がない</li>
+      <li>F(x)=0を学べばよい</li>
     </ul>
   </div>
   <div class="pane emphasis">
-    <h3>Residual Network</h3>
+    <h3>実装上の単純さ</h3>
     <ul>
-      <li>同じ層数にショートカットを追加</li>
-      <li>残差を学習するブロックを積み重ねる</li>
-      <li>深層化による性能劣化を防ぐ</li>
+      <li>追加するのはショートカットと加算</li>
+      <li>パラメータを増やさない恒等ショートカットも使える</li>
     </ul>
   </div>
 </div>
 
-<div class="figure-placeholder">[図: 論文Figure 3。34層Plain Netと34層ResNetの構成図]</div>
-
 ---
 <!-- class: content-gray show-page -->
 
-## 3. 実験設定
-<p class="dense-lead">ショートカットコネクションの効果を、Plain Netや既存モデルとの比較で検証する。</p>
+## 7. 実験設定
+<p class="dense-lead">残差学習の効果を、Plain Netや既存モデルとの比較で検証する。</p>
 
 <div class="two-pane">
   <div class="pane">
@@ -171,118 +192,119 @@ $$
     <ul>
       <li>画像分類: ImageNet 2012, CIFAR-10</li>
       <li>物体検出: PASCAL VOC, MS COCO</li>
-      <li>分類だけでなく検出タスクへの汎用性も確認</li>
+      <li>分類と検出の両方で汎用性を確認</li>
     </ul>
   </div>
   <div class="pane">
     <h3>比較対象</h3>
     <ul>
-      <li>Plain Network: ResNetと同じ層数だがショートカットなし</li>
-      <li>VGG, GoogLeNetなどの既存SOTAモデル</li>
-      <li>18層から152層までのモデルを比較</li>
+      <li>Plain Network: 同じ層数でショートカットなし</li>
+      <li>VGG, GoogLeNetなどの既存モデル</li>
+      <li>18層から152層までのResNet</li>
     </ul>
   </div>
 </div>
 
-<div class="callout">CIFAR-10では1000層を超えるネットワークも試行し、深層化の限界を検証している。</div>
+<div class="callout">CIFAR-10では1000層を超えるネットワークも試し、深層化の限界を検証している。</div>
 
 ---
 <!-- class: content-gray show-page -->
 
-## 4. 結果: Degradation問題の解決
+## 8. 結果
 <p class="dense-lead">ResNetでは、深いモデルが浅いモデルより良くなり、深さの恩恵を受けられた。</p>
 
+<div class="layout-grid three">
+  <div class="insight-card">
+    <h3>Degradation解消</h3>
+    <p>34層ResNetは18層ResNetより良くなり、Plain Netとは逆の傾向を示した。</p>
+  </div>
+  <div class="insight-card emphasis">
+    <h3>ImageNet</h3>
+    <span class="big-number">4.49%</span>
+    <p class="card-note">ResNet-152単体のTop-5エラー率</p>
+  </div>
+  <div class="insight-card">
+    <h3>Ensemble</h3>
+    <span class="big-number">3.57%</span>
+    <p class="card-note">ILSVRC 2015で優勝</p>
+  </div>
+</div>
+
+<div class="figure-placeholder">[図: 論文Figure 4 / Table 4。Plain NetとResNetの比較]</div>
+
+---
+<!-- class: content-gray show-page -->
+
+## 9. 考察
+<p class="dense-lead">ResNetの層の応答はPlain Netより小さく、残差学習の仮説を支持する。</p>
+
 <div class="two-pane">
   <div class="pane emphasis">
-    <h3>Plain Network</h3>
+    <h3>残差の見方</h3>
     <ul>
-      <li>34層は18層より誤差が悪化</li>
-      <li>深くしただけでは最適化が難しい</li>
-      <li>Degradation問題を再現</li>
+      <li>多くの層は入力を大きく変える必要がない</li>
+      <li>深いResNetほど残差応答が小さい傾向がある</li>
+      <li>恒等写像に近い振る舞いを許す構造が効いている</li>
     </ul>
   </div>
   <div class="pane">
-    <h3>Residual Network</h3>
+    <h3>汎用性</h3>
     <ul>
-      <li>34層は18層より誤差が改善</li>
-      <li>深さの恩恵を受けられる</li>
-      <li>残差学習が最適化を容易にする</li>
+      <li>分類だけでなく検出タスクでも効果を示す</li>
+      <li>MS COCOではVGG-16からResNet-101への置換で性能が向上</li>
+      <li>学習された特徴がタスク横断で有効だった</li>
     </ul>
   </div>
 </div>
 
-<div class="figure-placeholder">[図: 論文Figure 4。Plain NetとResNetの訓練・検証誤差グラフ]</div>
+<div class="figure-placeholder">[図: 論文Figure 7。各層の応答の大きさ]</div>
 
 ---
 <!-- class: content-gray show-page -->
 
-## ImageNetでの性能
-<p class="dense-lead">152層ResNetが高い性能を示し、ILSVRC 2015で優勝した。</p>
+## 10. 限界・今後の課題
+<p class="dense-lead">ResNetは深層化を可能にしたが、深さだけで全てが解決するわけではない。</p>
 
 <div class="two-pane">
   <div class="pane">
-    <h3>単体モデルの比較</h3>
+    <h3>限界</h3>
     <ul>
-      <li>VGG-16: Top-5エラー率 7.1%</li>
-      <li>PReLU-net: Top-5エラー率 5.71%</li>
-      <li>ResNet-101: Top-5エラー率 4.60%</li>
-      <li><b>ResNet-152: Top-5エラー率 4.49%</b></li>
+      <li>非常に深くすると計算量とメモリ消費が増える</li>
+      <li>タスクによっては深さ以外の設計も重要になる</li>
+      <li>ショートカットだけで表現効率の全問題を解くわけではない</li>
     </ul>
   </div>
   <div class="pane emphasis">
-    <h3>主要な結果</h3>
+    <h3>今後の発展</h3>
     <ul>
-      <li>ResNetは層を深くするほど精度が向上した</li>
-      <li>152層モデルで最高性能を達成した</li>
-      <li>アンサンブルではTop-5エラー率3.57%を記録した</li>
+      <li>より効率的なblock設計</li>
+      <li>検出・セグメンテーションなど下流タスクへの応用</li>
+      <li>ConvNeXtのような現代的ConvNetへの発展</li>
     </ul>
   </div>
 </div>
 
-<div class="figure-placeholder">[図: 論文Table 4。ResNet-152の性能比較]</div>
+<div class="callout">ResNet以後の多くのモデルは、残差接続を基本部品として利用している。</div>
 
 ---
 <!-- class: content-gray show-page -->
 
-## 物体検出での汎用性
-<p class="dense-lead">ResNetで学習された特徴は、画像分類だけでなく物体検出でも有効だった。</p>
-
-| バックボーン | mAP @ [.5, .95] | mAP @ .5 |
-| :--- | :---: | :---: |
-| VGG-16 | 21.2 | 41.5 |
-| **ResNet-101** | **27.2** | **48.4** |
-| 向上率 | **+28%** | **+17%** |
-
-<ul class="dense-list">
-  <li>バックボーンをVGG-16からResNet-101に置き換えるだけで、MS COCOで性能が向上した。</li>
-  <li>ResNetがタスクに依存しない汎用的な特徴を学習できていることを示している。</li>
-</ul>
-
----
-<!-- class: content-gray show-page -->
-
-## 考察: 残差は本当に小さいか
-<p class="dense-lead">ResNetの層の応答はPlain Netより小さい傾向にあり、残差学習の仮説を支持する。</p>
-
-<ul class="dense-list">
-  <li>ResNetの層の応答、つまり学習された残差の大きさは、Plain Netに比べて全体的に小さい。</li>
-  <li>特に深いResNetほど、応答が小さくなる傾向がある。</li>
-  <li>多くの層が恒等写像に近い、「何もしない」に近い振る舞いをしていることを示唆する。</li>
-</ul>
-
-<div class="figure-placeholder">[図: 論文Figure 7。各層の出力の標準偏差を示すグラフ]</div>
-
----
-<!-- class: content-gray show-page -->
-
-## 5. まとめ
+## 11. まとめ
 <p class="dense-lead">ResNetは、残差学習とショートカットにより、超深層ネットワークの最適化を可能にした。</p>
 
-<ul class="dense-list">
-  <li><b>Degradation問題を解決</b>: 深くすると訓練誤差が悪化する問題に対して、残差学習を提案した。</li>
-  <li><b>152層でSOTAを達成</b>: ImageNetコンペで優勝し、深層化の有効性を示した。</li>
-  <li><b>汎用的な特徴を学習</b>: 物体検出でもResNetバックボーンにより性能が向上した。</li>
-  <li><b>現代モデルの基礎</b>: 画像認識や検出の標準的なバックボーンとして広く使われるようになった。</li>
-</ul>
+<div class="summary-grid">
+  <div class="insight-card">
+    <h3>背景</h3>
+    <p>深いネットワークは表現力が高いが、単純な深層化ではDegradation問題が起きる。</p>
+  </div>
+  <div class="insight-card emphasis">
+    <h3>方法</h3>
+    <p>H(x)を直接学ばず、F(x)+xとして残差を学習する。</p>
+  </div>
+  <div class="insight-card">
+    <h3>結論</h3>
+    <p>深いモデルほど性能を伸ばせるようになり、分類・検出で有効性を示した。</p>
+  </div>
+</div>
 
-<div class="callout">ポイント: ResNetは「深くするほど学習しにくい」を、「残差を学ぶ」ことで乗り越えた。</div>
+<div class="callout">輪読では「深くしたいが最適化できない」という課題から、残差学習へ進む流れを押さえる。</div>
