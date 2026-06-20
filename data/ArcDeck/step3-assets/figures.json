@@ -1,0 +1,80 @@
+[
+  {
+    "placeholder": "Figure 1. 先行研究とArcDeckの比較",
+    "found": true,
+    "pageNumber": 1,
+    "figureLabel": "Figure 1",
+    "captionText": "Figure 1: section-level organization, or direct outline extraction, yielding condensed text without narrative Framework Comparison. (a) Prior methods rely on raw-text summarization, isolated",
+    "imagePath": "step3-assets/figure-01.png",
+    "widthHint": 640,
+    "detectionMethod": "largest-image-fallback",
+    "detectedLabel": "",
+    "sourceImageIndex": 9,
+    "sourceSize": {
+      "width": 896,
+      "height": 665
+    }
+  },
+  {
+    "placeholder": "Figure 2. ArcDeckの処理フロー全体図",
+    "found": true,
+    "pageNumber": 4,
+    "figureLabel": "Figure 2",
+    "captionText": "Figure 2: ArcDeck Overview. 1) Preprocessing extracts textual and visual assets from the source",
+    "imagePath": "step3-assets/figure-02.png",
+    "widthHint": 520,
+    "detectionMethod": "gemini-image-selection",
+    "detectedLabel": "figure",
+    "sourceImageIndex": 22,
+    "sourceSize": {
+      "width": 550,
+      "height": 310
+    }
+  },
+  {
+    "placeholder": "Figure 3. 談話木の具体例",
+    "found": false,
+    "pageNumber": 5,
+    "figureLabel": "Figure 3",
+    "captionText": "Figure 3: Example Discourse Trees from Secs. 1 & 3 of this paper. Leaf nodes correspond to"
+  },
+  {
+    "placeholder": "Figure 4. Global Commitmentの例",
+    "found": true,
+    "pageNumber": 6,
+    "figureLabel": "Figure 4",
+    "captionText": "Figure 4: rative progression of the presentation through five key components: a snapshot, core content, a talk Global Commitment Example. The global commitment establishes the high-level nar-",
+    "imagePath": "step3-assets/figure-04.png",
+    "widthHint": 640,
+    "detectionMethod": "largest-image-fallback",
+    "detectedLabel": "",
+    "sourceImageIndex": 1,
+    "sourceSize": {
+      "width": 949,
+      "height": 631
+    }
+  },
+  {
+    "placeholder": "Figure 6. ArcBenchの統計情報",
+    "found": false,
+    "pageNumber": 7,
+    "figureLabel": "Figure 6",
+    "captionText": "Figure 6: of research topics across six major CV & ML venues, publication years, visual density, and author- ArcBench Statistics. Overview of our curated 100-pair dataset, showing the distribution"
+  },
+  {
+    "placeholder": "Figure 7. 各手法による生成スライドの定性比較",
+    "found": true,
+    "pageNumber": 10,
+    "figureLabel": "Figure 7",
+    "captionText": "Figure 7: Qualitative Comparison. Unlike baselines, ArcDeck shows clear narrative flow instead",
+    "imagePath": "step3-assets/figure-06.png",
+    "widthHint": 640,
+    "detectionMethod": "largest-image-fallback",
+    "detectedLabel": "",
+    "sourceImageIndex": 20,
+    "sourceSize": {
+      "width": 798,
+      "height": 539
+    }
+  }
+]
