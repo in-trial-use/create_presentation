@@ -786,7 +786,33 @@ function ensureMarkdownExtension(fileName) {
 }
 
 function extractFigurePlaceholders(markdown) {
-  return [...markdown.matchAll(/\[図:\s*([^\]]+)\]/g)].map((match) => match[1].trim());
+  const figurePlaceholders = [...markdown.matchAll(/\[図:\s*([^\]]+)\]/g)].map((match) => match[1].trim());
+  const tablePlaceholders = extractTableReferences(markdown);
+  return [...figurePlaceholders, ...tablePlaceholders];
+}
+
+function extractTableReferences(markdown) {
+  const references = [];
+  const lines = markdown.split("\n");
+
+  for (let i = 0; i < lines.length; i++) {
+    // Markdown テーブルの開始行を検出（| で始まり | で終わる）
+    if (!/^\|.+\|$/.test(lines[i].trim())) continue;
+    // 次の行がセパレータ行か確認
+    if (i + 1 >= lines.length || !/^\|[\s:|-]+\|$/.test(lines[i + 1].trim())) continue;
+
+    // テーブルの前後数行から (Table N) や (表N) の参照を探す
+    const searchStart = Math.max(0, i - 5);
+    const searchEnd = Math.min(lines.length - 1, i + 20);
+    const searchBlock = lines.slice(searchStart, searchEnd + 1).join("\n");
+
+    const tableRef = searchBlock.match(/(?:Table|TABLE|表)\s*(\d+(?:[.\-]\d+)*)/i);
+    if (tableRef) {
+      references.push(tableRef[0].trim());
+    }
+  }
+
+  return references;
 }
 
 function loadEnvFile(filePath) {

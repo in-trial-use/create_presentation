@@ -23,11 +23,17 @@ window.pdfUtils = {
         const page = await pdf.getPage(pageNumber);
         const textLines = await extractPageTextLines(page);
         const images = await extractPageImages(page, pdfjsLib.OPS);
+        const tableImages = await extractPageTableImages(page, pdfjsLib.OPS);
+
+        const allImages = [...images];
+        for (const tImg of tableImages) {
+          allImages.push({ ...tImg, imageIndex: allImages.length + 1 });
+        }
 
         extractedPages.push({
           pageNumber,
           textLines,
-          images,
+          images: allImages,
         });
       }
     } finally {
@@ -292,6 +298,181 @@ async function extractPageImages(page, ops) {
   return extractedImages
     .sort((left, right) => right.width * right.height - left.width * left.height)
     .slice(0, 6);
+}
+
+async function extractPageTableImages(page, ops) {
+  // 1. ページ上の "Table N" / "表N" キャプションを検出
+  const textContent = await page.getTextContent();
+  const items = textContent.items.filter((item) => item?.str?.trim());
+
+  const tableCaptions = [];
+  for (const item of items) {
+    if (/^(table|表)\s*\d+/i.test(item.str.trim())) {
+      tableCaptions.push({
+        text: item.str.trim(),
+        x: item.transform[4],
+        y: item.transform[5],
+        height: item.height || 12,
+      });
+    }
+  }
+
+  if (tableCaptions.length === 0) return [];
+
+  // 2. operator list から水平罫線を抽出（学術論文の表は booktabs 形式の水平線で構成される）
+  // PDF.js の constructPath args 構造:
+  //   argsArray[i] = [strokeOp, [Float32Array(pathBuffer)], minMax]
+  //   pathBuffer はインターリーブ形式: [DrawOPS, x, y, DrawOPS, x, y, ...]
+  //   DrawOPS 定数: moveTo=0, lineTo=1, curveTo=2, quadraticCurveTo=3, closePath=4
+  const DRAW_MOVE_TO = 0;
+  const DRAW_LINE_TO = 1;
+  const DRAW_CURVE_TO = 2;
+  const DRAW_QUAD_CURVE_TO = 3;
+
+  const operatorList = await page.getOperatorList();
+  const horizontalLines = [];
+
+  let ctm = [1, 0, 0, 1, 0, 0];
+  const ctmStack = [];
+
+  function multiplyMatrix(a, b) {
+    return [
+      a[0]*b[0] + a[2]*b[1], a[1]*b[0] + a[3]*b[1],
+      a[0]*b[2] + a[2]*b[3], a[1]*b[2] + a[3]*b[3],
+      a[0]*b[4] + a[2]*b[5] + a[4], a[1]*b[4] + a[3]*b[5] + a[5],
+    ];
+  }
+
+  function transformPoint(x, y) {
+    return [ctm[0] * x + ctm[2] * y + ctm[4], ctm[1] * x + ctm[3] * y + ctm[5]];
+  }
+
+  for (let i = 0; i < operatorList.fnArray.length; i++) {
+    const fn = operatorList.fnArray[i];
+
+    if (fn === ops.save) { ctmStack.push([...ctm]); continue; }
+    if (fn === ops.restore) { if (ctmStack.length) ctm = ctmStack.pop(); continue; }
+    if (fn === ops.transform) { ctm = multiplyMatrix(ctm, operatorList.argsArray[i]); continue; }
+
+    if (fn === ops.constructPath) {
+      const pathData = operatorList.argsArray[i]?.[1]?.[0];
+      if (!pathData || !pathData.length) continue;
+
+      let ci = 0;
+      let curX = 0, curY = 0;
+
+      while (ci < pathData.length) {
+        const drawOp = pathData[ci++];
+
+        if (drawOp === DRAW_MOVE_TO) {
+          curX = pathData[ci++]; curY = pathData[ci++];
+        } else if (drawOp === DRAW_LINE_TO) {
+          const lx = pathData[ci++], ly = pathData[ci++];
+          const [px1, py1] = transformPoint(curX, curY);
+          const [px2, py2] = transformPoint(lx, ly);
+          if (Math.abs(py1 - py2) < 2 && Math.abs(px2 - px1) > 50) {
+            horizontalLines.push({ x1: Math.min(px1, px2), x2: Math.max(px1, px2), y: (py1 + py2) / 2 });
+          }
+          curX = lx; curY = ly;
+        } else if (drawOp === DRAW_CURVE_TO) {
+          ci += 6; curX = pathData[ci - 2]; curY = pathData[ci - 1];
+        } else if (drawOp === DRAW_QUAD_CURVE_TO) {
+          ci += 4; curX = pathData[ci - 2]; curY = pathData[ci - 1];
+        } else {
+          // closePath(4) or unknown: no coords consumed
+        }
+      }
+    }
+  }
+
+  if (horizontalLines.length === 0) return [];
+
+  // 3. 各テーブルキャプションに対して、近接する水平罫線クラスタから表領域を特定
+  const tableRegions = [];
+
+  for (const caption of tableCaptions) {
+    // キャプションより下にある罫線を収集（PDF座標系: y減少 = 下方向）
+    const candidateLines = horizontalLines.filter(
+      (line) => line.y < caption.y + 5 && line.y > caption.y - 500
+    );
+    if (candidateLines.length < 2) continue;
+
+    // x範囲が類似する罫線をクラスタリング（表の罫線は同じ幅で揃う）
+    const clusters = [];
+    for (const line of candidateLines) {
+      let matched = false;
+      for (const cluster of clusters) {
+        const ref = cluster[0];
+        if (Math.abs(line.x1 - ref.x1) < 30 && Math.abs(line.x2 - ref.x2) < 30) {
+          cluster.push(line);
+          matched = true;
+          break;
+        }
+      }
+      if (!matched) clusters.push([line]);
+    }
+
+    // 2本以上の罫線を持つクラスタで、キャプションに最も近いものを選択
+    const validClusters = clusters.filter((c) => c.length >= 2);
+    if (validClusters.length === 0) continue;
+
+    validClusters.sort((a, b) => {
+      const aTop = Math.max(...a.map((l) => l.y));
+      const bTop = Math.max(...b.map((l) => l.y));
+      return bTop - aTop;
+    });
+
+    const best = validClusters[0];
+    const padding = 5;
+    const x1 = Math.min(...best.map((l) => l.x1)) - padding;
+    const x2 = Math.max(...best.map((l) => l.x2)) + padding;
+    const yBottom = Math.min(...best.map((l) => l.y)) - padding;
+    const yTop = caption.y + caption.height + padding;
+
+    if ((x2 - x1) < 80 || (yTop - yBottom) < 30) continue;
+    tableRegions.push({ x1, y1: yBottom, x2, y2: yTop });
+  }
+
+  if (tableRegions.length === 0) return [];
+
+  // 4. ページをレンダリングして表領域をクロップ
+  const RENDER_SCALE = 3;
+  const viewport = page.getViewport({ scale: RENDER_SCALE });
+  const canvas = document.createElement("canvas");
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+  await page.render({ canvasContext: canvas.getContext("2d"), viewport }).promise;
+
+  const pageHeight = viewport.height / RENDER_SCALE;
+  const extractedImages = [];
+
+  for (const region of tableRegions) {
+    const width = Math.round((region.x2 - region.x1) * RENDER_SCALE);
+    const height = Math.round((region.y2 - region.y1) * RENDER_SCALE);
+    if (width < 100 || height < 60) continue;
+
+    const cropCanvas = document.createElement("canvas");
+    cropCanvas.width = width;
+    cropCanvas.height = height;
+    cropCanvas.getContext("2d").drawImage(
+      canvas,
+      region.x1 * RENDER_SCALE, (pageHeight - region.y2) * RENDER_SCALE,
+      width, height,
+      0, 0, width, height,
+    );
+    const dataUrl = cropCanvas.toDataURL("image/jpeg", 0.85);
+    extractedImages.push({
+      imageIndex: extractedImages.length + 1,
+      width,
+      height,
+      mimeType: "image/jpeg",
+      data: dataUrl.split(",")[1],
+    });
+  }
+
+  canvas.width = 0;
+  canvas.height = 0;
+  return extractedImages;
 }
 
 async function resolveImageObject(page, candidate) {

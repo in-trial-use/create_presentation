@@ -6,6 +6,7 @@ function buildStep3Prompt({ step2Markdown, extractedFigures }) {
         `   imagePath: ${figure.imagePath}`,
         `   captionText: ${figure.captionText}`,
         `   widthHint: ${figure.widthHint}`,
+        `   sourceSize: ${figure.sourceSize ? `${figure.sourceSize.width}x${figure.sourceSize.height}` : "unknown"}`,
       ].join("\n");
     })
     .join("\n");
@@ -19,7 +20,7 @@ function buildStep3Prompt({ step2Markdown, extractedFigures }) {
 - 図を入れるスライドでは、文字量を減らして図と本文が重ならないようにする
 - HTMLブロック（div 内）では Markdown 記法は機能しない。div内は必ずHTMLタグを使うこと
 - 全スライド共通: step2 のテキストをそのままコピーせず、スライドに収まる量に削ること
-- 1スライドあたりの本文は合計 10行以内（ネスト行を含む）
+- 図がないスライドの場合、1スライドあたりの本文は合計 10行以内（ネスト行を含む）
 - ネスト箇条書きは 1段階まで（孫箇条書き禁止）
 - 親項目1つのサブ項目は 最大2つまで
 - 図がないスライドでも、step2より文字量を減らしてよい
@@ -34,19 +35,23 @@ function buildStep3Prompt({ step2Markdown, extractedFigures }) {
 - 置換時は、原則として Marp の ![w:WIDTH](...) ではなく、以下のHTML構造を使うこと。
 
 <div class="figure-block">
-  <img src="IMAGE_PATH" alt="CAPTION_TEXT">
+  <img src="IMAGE_PATH" alt="">
   <div class="figure-caption">CAPTION_TEXT</div>
 </div>
 
 - IMAGE_PATH には imagePath を一字一句そのまま使うこと。
 - CAPTION_TEXT には captionText を短く要約して入れること。
+- キャプション中の英語ラベルは日本語に変換すること: "Figure 1" → "図1"、"Table 1" → "表1" のように書く（例: "図3: xxx"）。
 - 生の ![](...) だけで画像を置かないこと。
 - ![w:WIDTH](...) は原則使わないこと。
 - 図を挿入するレイアウトは以下の基準で選ぶこと:
-  - 本文が短い（箇条書き3点以下）場合 → figure-block を本文の下に置くだけでよい
-  - 本文と図を並べないと両方が収まらない場合のみ → two-column を使う
-  - 迷ったら figure-block 単独を優先すること
+  - 本文が短い（箇条書きの子要素含めて8行以下）場合 → figure-block を本文の下に置くだけでよい
+  - 本文と図を並べないと両方が収まらない場合 → two-column を使う
+  - 迷ったら two-column 単独を優先すること
   - two-column を使う場合、column-text の箇条書きは親項目3点まで（ネストはあり）
+  - 1スライドに図表が2つ以上ある場合も two-column を使い、column-figure 内に複数の figure-block を縦に並べること
+  - ただし、sourceSize の縦または横が 1500px を超える大きい図が同じスライドに2つ以上ある場合は、1スライドに収めると縮小されすぎるため、スライドを分割して各スライドに図を1つずつ配置すること
+  - スライドを分割する場合の重要ルール: step2 の対応するテキストをそれぞれのスライドに振り分け、テキストを過度に削らないこと。各スライドに図が1つになるので、テキスト量に余裕がある。step2 の文章をそのまま活かすこと
 -  [絶対厳守] div タグの内側では Markdown 記法は一切レンダリングされない。step2 の Markdown を div 内へ移す際は、必ず以下の変換を行うこと:
   - 箇条書き「- 項目」 → <li>項目</li>（ul で囲む）
   - 太字「**太字**」 → <strong>太字</strong>
@@ -88,13 +93,36 @@ OK（HTML に変換する）:
   </div>
   <div class="column-figure">
 <div class="figure-block">
-  <img src="IMAGE_PATH" alt="CAPTION">
+  <img src="IMAGE_PATH" alt="">
   <div class="figure-caption">CAPTION</div>
 </div>
   </div>
 </div>
 
-- 図が本文と重なる場合は、本文を短くしてよい。
+- 図表が2つ以上ある場合の two-column 構造:
+
+## スライドタイトル
+
+<div class="two-column">
+  <div class="column-text">
+<ul>
+  <li>説明1</li>
+  <li>説明2</li>
+</ul>
+  </div>
+  <div class="column-figure">
+<div class="figure-block">
+  <img src="IMAGE_PATH_1" alt="">
+  <div class="figure-caption">CAPTION_1</div>
+</div>
+<div class="figure-block">
+  <img src="IMAGE_PATH_2" alt="">
+  <div class="figure-caption">CAPTION_2</div>
+</div>
+  </div>
+</div>
+
+- 図が本文と重なる場合は、本文を短くすること。
 - 図を入れるスライドでは、1スライドあたりの箇条書きは最大3点程度に抑えること。
 - 画像を背景画像として配置しない
 - 画像がない placeholder は、そのまま残す
@@ -107,8 +135,11 @@ OK（HTML に変換する）:
 - editable PPTX で文字が枠からあふれないことを優先し、1枚あたりの文字量は増やしすぎない
 - 見出しは1行で収まる短さを優先し、本文や箇条書きも必要なら短く言い換えてよい
 
-画像記法の参考:
-- 複数画像を無理に詰め込まず、1つの図を素直に1ブロックで置く
+表の差し替え:
+- 図の一覧に Table や表のキャプションを持つ画像がある場合、step2 中の対応する Markdown テーブル（| ... | 形式）を削除し、その画像を figure-block で挿入する
+- Markdown テーブルの前後にある表の説明文はそのまま残してよい
+
+
 
 数式を含むスライドの例外:
 - 既存の数式は Markdown の通常文または通常の数式ブロックのまま維持する
