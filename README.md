@@ -14,7 +14,7 @@ arXiv論文のPDFをローカルで読み込み、Geminiで要約し、その結
 
 Step 2は単体でPDFを受け取って生成できます。Step 1の要約や手入力メモ、流れ指定は任意の補助情報です。step2版とstep3版は `data/<base>/` 配下の別ファイルとして保存できます。
 
-Step 1 / Step 2 / Step 2のレイアウト検証では、PDFをGeminiへ直接渡します。Step 2のレイアウト検証では、生成Markdownを一時PDFへ変換し、そのPDFもGeminiに直接渡して目視相当の判定を行います。PDFをテキスト化してGeminiへ読ませることはしません。
+Step 1 / Step 2 / Step 2のレイアウト検証では、PDFをGeminiへ直接渡します。Step 2のレイアウト検証では、元論文PDFと、生成Markdownを一時PDFへ変換したスライドPDFの両方をGeminiに直接渡して目視相当の判定・修正を行います。PDFをテキスト化してGeminiへ読ませることはしません。
 
 Step 2の「検証ログ保存先」に `v2/CNN` のようなディレクトリを指定すると、判定・修正ループの入出力JSONを `data/v2/CNN/step2-layout-log.json` に保存します。各試行で実際にレンダリングしたMarkdownとPDFは同じディレクトリの `logs/` 配下に `step2_1.md`, `step2_1.pdf` のように保存します。
 

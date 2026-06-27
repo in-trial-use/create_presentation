@@ -4,3 +4,4 @@ node_modules
 
 public/vendor/*
 .marp-home/*
+.step2-layout-work/*
