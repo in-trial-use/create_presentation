@@ -547,8 +547,9 @@ function readRequestBody(req, maxBytes) {
 }
 
 async function generateGeminiText({ apiKey, model, parts }) {
+  const input = convertGeminiPartsToInteractionInput(parts);
   const geminiResponse = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+    "https://generativelanguage.googleapis.com/v1beta/interactions",
     {
       method: "POST",
       headers: {
@@ -556,12 +557,8 @@ async function generateGeminiText({ apiKey, model, parts }) {
         "x-goog-api-key": apiKey,
       },
       body: JSON.stringify({
-        contents: [
-          {
-            role: "user",
-            parts,
-          },
-        ],
+        model,
+        input,
       }),
     },
   );
@@ -586,7 +583,7 @@ async function generateGeminiText({ apiKey, model, parts }) {
     throw error;
   }
 
-  const output = extractTextFromGemini(responseJson);
+  const output = extractTextFromGeminiInteraction(responseJson);
 
   if (!output) {
     const error = new Error("Gemini returned no text output.");
@@ -595,6 +592,89 @@ async function generateGeminiText({ apiKey, model, parts }) {
   }
 
   return output;
+}
+
+function convertGeminiPartsToInteractionInput(parts) {
+  const input = [];
+
+  for (const part of parts || []) {
+    if (typeof part?.text === "string") {
+      input.push({
+        type: "text",
+        text: part.text,
+      });
+      continue;
+    }
+
+    if (part?.inline_data?.data && part?.inline_data?.mime_type) {
+      input.push({
+        type: "document",
+        data: part.inline_data.data,
+        mime_type: part.inline_data.mime_type,
+      });
+    }
+  }
+
+  return input;
+}
+
+function extractTextFromGeminiInteraction(responseJson) {
+  if (typeof responseJson?.output_text === "string" && responseJson.output_text.trim()) {
+    return responseJson.output_text.trim();
+  }
+
+  const output = responseJson?.output;
+  const textParts = [];
+
+  if (Array.isArray(output)) {
+    for (const item of output) {
+      collectInteractionTextParts(item, textParts);
+    }
+  } else {
+    collectInteractionTextParts(output, textParts);
+  }
+
+  if (textParts.length > 0) {
+    return textParts.join("\n\n").trim();
+  }
+
+  return extractTextFromGemini(responseJson);
+}
+
+function collectInteractionTextParts(value, textParts) {
+  if (!value) {
+    return;
+  }
+
+  if (typeof value === "string" && value.trim()) {
+    textParts.push(value.trim());
+    return;
+  }
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      collectInteractionTextParts(item, textParts);
+    }
+    return;
+  }
+
+  if (typeof value !== "object") {
+    return;
+  }
+
+  for (const key of ["text", "output_text", "content"]) {
+    if (typeof value[key] === "string" && value[key].trim()) {
+      textParts.push(value[key].trim());
+    }
+  }
+
+  for (const key of ["content", "parts", "items", "output", "steps"]) {
+    if (Array.isArray(value[key])) {
+      collectInteractionTextParts(value[key], textParts);
+    } else if (typeof value[key] === "object" && value[key] !== null) {
+      collectInteractionTextParts(value[key], textParts);
+    }
+  }
 }
 
 function extractTextFromGemini(responseJson) {

@@ -14,7 +14,7 @@ arXiv論文のPDFをローカルで読み込み、Geminiで要約し、その結
 
 Step 2は単体でPDFを受け取って生成できます。Step 1の要約や手入力メモ、流れ指定は任意の補助情報です。step2版とstep3版は `data/<base>/` 配下の別ファイルとして保存できます。
 
-Step 2のレイアウト検証では、生成Markdownを一時PDFへ変換し、PDFをGeminiに渡して目視相当の判定を行います。あわせて `pdftotext` による簡易検査で、`$$` や `\(...\)` などの数式記法がPDF上に生文字列として残っていないかも確認します。
+Step 1 / Step 2 / Step 2のレイアウト検証では、Gemini Interactions API の `type: "document"` 入力としてPDFを直接渡します。Step 2のレイアウト検証では、生成Markdownを一時PDFへ変換し、そのPDFもGeminiに直接渡して目視相当の判定を行います。PDFをテキスト化してGeminiへ読ませることはしません。
 
 ## 環境変数
 
@@ -53,6 +53,6 @@ node server.js
 
 ## 補足
 
-- Step 1 / Step 2 はPDF本体をGeminiへ渡し、Step 3 はブラウザ側PDF.jsでPDF内部画像を抽出してから候補選別する構成です
-- Step 2のレイアウト検証には、Marp CLI、Chromium、`pdftotext` がローカル環境に必要です
+- Step 1 / Step 2 はPDF本体をGemini Interactions APIへ `document` として渡し、Step 3 はブラウザ側PDF.jsでPDF内部画像を抽出してから候補選別する構成です
+- Step 2のレイアウト検証には、Marp CLI と Chromium がローカル環境に必要です
 - 大きいPDFではブラウザ経由のbase64送信が重くなるため、次段階ではFiles API化やarXiv URL直接取得に進めるのがおすすめです

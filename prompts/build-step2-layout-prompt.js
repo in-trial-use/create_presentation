@@ -1,6 +1,5 @@
 function buildStep2LayoutJudgePrompt({
   markdown,
-  renderedText,
   localIssues,
   attemptNumber,
 }) {
@@ -13,7 +12,7 @@ OK条件:
 - テキストや表がスライド外へ見切れていない
 - 文字量が多すぎて読めないスライドがない
 - ページ番号やロゴと本文が不自然に重なっていない
-- 余分なページ（例：空白）がない
+- 余分なページ（例：空白のみ）がない
 
 NGの場合は、修正しやすいように「何枚目の何が問題か」を具体的に書いてください。
 判定は厳しめでよいですが、軽微な余白の多さだけではNGにしないでください。
@@ -36,9 +35,6 @@ NGの場合は、修正しやすいように「何枚目の何が問題か」を
 
 ローカル検査で見つかった懸念:
 ${JSON.stringify(localIssues, null, 2)}
-
-PDF抽出テキストの一部:
-${renderedText.slice(0, 6000)}
 
 元Markdown:
 ${markdown.slice(0, 30000)}`;
