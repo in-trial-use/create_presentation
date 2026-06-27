@@ -161,13 +161,14 @@ function buildStep2CompletionMessage(data) {
   const lastAttempt = attempts[attempts.length - 1];
   const attemptText = attempts.length > 0 ? `${attempts.length}回検証` : "検証なし";
   const logText = validation.logPath ? ` ログ: ${validation.logPath}` : "";
+  const artifactText = validation.artifactDir ? ` 試行ファイル: ${validation.artifactDir}` : "";
 
   if (validation.ok) {
-    return `完了: ${data.model} で生成し、PDFレイアウト検証もOKです（${attemptText}）。${logText}`;
+    return `完了: ${data.model} で生成し、PDFレイアウト検証もOKです（${attemptText}）。${logText}${artifactText}`;
   }
 
   const firstIssue = lastAttempt?.issues?.[0]?.message || validation.warning || "手動確認が必要です。";
-  return `生成しましたが、PDFレイアウト検証に警告があります（${attemptText}）。${firstIssue}${logText}`;
+  return `生成しましたが、PDFレイアウト検証に警告があります（${attemptText}）。${firstIssue}${logText}${artifactText}`;
 }
 
 function inferSlideTitleFromFile(file) {

@@ -20,6 +20,8 @@ const PUBLIC_DIR = path.join(ROOT_DIR, "public");
 const DATA_DIR = path.join(ROOT_DIR, "data");
 const MAX_BODY_BYTES = 80 * 1024 * 1024;
 const STEP2_LAYOUT_MAX_ATTEMPTS = Number(process.env.STEP2_LAYOUT_MAX_ATTEMPTS || 3);
+const GEMINI_INTERACTION_POLL_INTERVAL_MS = Number(process.env.GEMINI_INTERACTION_POLL_INTERVAL_MS || 2000);
+const GEMINI_INTERACTION_MAX_POLLS = Number(process.env.GEMINI_INTERACTION_MAX_POLLS || 45);
 
 loadEnvFile(path.join(ROOT_DIR, ".env"));
 const DEFAULT_PORT = Number(process.env.PORT || 3000);
@@ -36,23 +38,23 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === "POST" && req.url === "/api/analyze") {
-      return handleAnalyze(req, res);
+      return await handleAnalyze(req, res);
     }
 
     if (req.method === "POST" && req.url === "/api/slides") {
-      return handleSlideGeneration(req, res);
+      return await handleSlideGeneration(req, res);
     }
 
     if (req.method === "POST" && req.url === "/api/extract-figures") {
-      return handleFigureExtraction(req, res);
+      return await handleFigureExtraction(req, res);
     }
 
     if (req.method === "POST" && req.url === "/api/regenerate-step3") {
-      return handleStep3Regeneration(req, res);
+      return await handleStep3Regeneration(req, res);
     }
 
     if (req.method === "POST" && req.url === "/api/save-slide") {
-      return handleSaveSlide(req, res);
+      return await handleSaveSlide(req, res);
     }
 
     if (req.method === "GET") {
@@ -178,6 +180,7 @@ async function handleSlideGeneration(req, res) {
     presenterName,
     title,
   });
+  const layoutLogTarget = layoutLogPath ? buildStep2LayoutLogTarget(layoutLogPath) : null;
 
   const output = await generateGeminiText({
     apiKey,
@@ -211,11 +214,12 @@ async function handleSlideGeneration(req, res) {
     generateText: generateGeminiText,
     normalizeMarkdown: normalizeMarpOutput,
     stripMarkdownCodeFence,
+    artifactDir: layoutLogTarget?.artifactDir || "",
     maxAttempts: STEP2_LAYOUT_MAX_ATTEMPTS,
   });
-  const savedLayoutLogPath = layoutLogPath
+  const savedLayoutLogPath = layoutLogTarget
     ? saveStep2LayoutLog({
-        rawLogPath: layoutLogPath,
+        target: layoutLogTarget,
         log: refined.trace,
       })
     : "";
@@ -226,6 +230,7 @@ async function handleSlideGeneration(req, res) {
     validation: {
       ...refined.validation,
       logPath: savedLayoutLogPath,
+      artifactDir: layoutLogTarget?.relativeArtifactDir || "",
     },
   });
 }
@@ -547,6 +552,32 @@ function readRequestBody(req, maxBytes) {
 }
 
 async function generateGeminiText({ apiKey, model, parts }) {
+  const generateContentOutput = await generateGeminiTextWithGenerateContent({
+    apiKey,
+    model,
+    parts,
+  });
+
+  if (generateContentOutput) {
+    return generateContentOutput;
+  }
+
+  const interactionOutput = await generateGeminiTextWithInteractions({
+    apiKey,
+    model,
+    parts,
+  });
+
+  if (interactionOutput) {
+    return interactionOutput;
+  }
+
+  const error = new Error("Gemini returned no text output.");
+  error.statusCode = 502;
+  throw error;
+}
+
+async function generateGeminiTextWithInteractions({ apiKey, model, parts }) {
   const input = convertGeminiPartsToInteractionInput(parts);
   const geminiResponse = await fetch(
     "https://generativelanguage.googleapis.com/v1beta/interactions",
@@ -583,15 +614,140 @@ async function generateGeminiText({ apiKey, model, parts }) {
     throw error;
   }
 
-  const output = extractTextFromGeminiInteraction(responseJson);
+  const resolvedResponseJson = await resolveGeminiInteractionOutput({
+    apiKey,
+    initialResponseJson: responseJson,
+  });
+  const output = extractTextFromGeminiInteraction(resolvedResponseJson);
 
-  if (!output) {
-    const error = new Error("Gemini returned no text output.");
-    error.statusCode = 502;
+  if (output) {
+    return output;
+  }
+
+  return "";
+}
+
+async function generateGeminiTextWithGenerateContent({ apiKey, model, parts }) {
+  const geminiResponse = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/${buildGeminiModelResource(model)}:generateContent`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": apiKey,
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            role: "user",
+            parts: convertGeminiPartsToGenerateContentParts(parts),
+          },
+        ],
+      }),
+    },
+  );
+  const responseText = await geminiResponse.text();
+  let responseJson = {};
+
+  try {
+    responseJson = responseText ? JSON.parse(responseText) : {};
+  } catch {
+    responseJson = { raw: responseText };
+  }
+
+  if (!geminiResponse.ok) {
+    const errorMessage =
+      responseJson?.error?.message ||
+      responseJson?.raw ||
+      `Gemini generateContent request failed with status ${geminiResponse.status}.`;
+
+    const error = new Error(errorMessage);
+    error.statusCode = geminiResponse.status;
     throw error;
   }
 
-  return output;
+  return extractTextFromGemini(responseJson);
+}
+
+function buildGeminiModelResource(model) {
+  const normalizedModel = String(model || "").trim().replace(/^\/+/, "");
+  return normalizedModel.startsWith("models/") ? normalizedModel : `models/${normalizedModel}`;
+}
+
+async function resolveGeminiInteractionOutput({ apiKey, initialResponseJson }) {
+  if (extractTextFromGeminiInteraction(initialResponseJson)) {
+    return initialResponseJson;
+  }
+
+  const interactionId = String(initialResponseJson?.id || "").trim();
+
+  if (!interactionId) {
+    return initialResponseJson;
+  }
+
+  let latestResponseJson = initialResponseJson;
+
+  for (let pollIndex = 1; pollIndex <= GEMINI_INTERACTION_MAX_POLLS; pollIndex += 1) {
+    const status = String(latestResponseJson?.status || "").toLowerCase();
+
+    if (["failed", "cancelled", "canceled", "expired"].includes(status)) {
+      return latestResponseJson;
+    }
+
+    await delay(GEMINI_INTERACTION_POLL_INTERVAL_MS);
+    latestResponseJson = await getGeminiInteraction({
+      apiKey,
+      interactionId,
+    });
+
+    if (extractTextFromGeminiInteraction(latestResponseJson)) {
+      return latestResponseJson;
+    }
+  }
+
+  return latestResponseJson;
+}
+
+async function getGeminiInteraction({ apiKey, interactionId }) {
+  const resourcePath = interactionId.startsWith("interactions/")
+    ? interactionId
+    : `interactions/${interactionId}`;
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/${resourcePath}`,
+    {
+      method: "GET",
+      headers: {
+        "x-goog-api-key": apiKey,
+      },
+    },
+  );
+  const responseText = await response.text();
+  let responseJson = {};
+
+  try {
+    responseJson = responseText ? JSON.parse(responseText) : {};
+  } catch {
+    responseJson = { raw: responseText };
+  }
+
+  if (!response.ok) {
+    const errorMessage =
+      responseJson?.error?.message ||
+      responseJson?.raw ||
+      `Gemini interaction fetch failed with status ${response.status}.`;
+
+    const error = new Error(errorMessage);
+    error.statusCode = response.status;
+    throw error;
+  }
+
+  return responseJson;
+}
+
+function delay(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
 }
 
 function convertGeminiPartsToInteractionInput(parts) {
@@ -618,9 +774,37 @@ function convertGeminiPartsToInteractionInput(parts) {
   return input;
 }
 
+function convertGeminiPartsToGenerateContentParts(parts) {
+  const convertedParts = [];
+
+  for (const part of parts || []) {
+    if (typeof part?.text === "string") {
+      convertedParts.push({
+        text: part.text,
+      });
+      continue;
+    }
+
+    if (part?.inline_data?.data && part?.inline_data?.mime_type) {
+      convertedParts.push({
+        inlineData: {
+          mimeType: part.inline_data.mime_type,
+          data: part.inline_data.data,
+        },
+      });
+    }
+  }
+
+  return convertedParts;
+}
+
 function extractTextFromGeminiInteraction(responseJson) {
   if (typeof responseJson?.output_text === "string" && responseJson.output_text.trim()) {
     return responseJson.output_text.trim();
+  }
+
+  if (typeof responseJson?.outputText === "string" && responseJson.outputText.trim()) {
+    return responseJson.outputText.trim();
   }
 
   const output = responseJson?.output;
@@ -662,19 +846,55 @@ function collectInteractionTextParts(value, textParts) {
     return;
   }
 
-  for (const key of ["text", "output_text", "content"]) {
+  for (const key of ["text", "output_text", "outputText", "content", "value"]) {
     if (typeof value[key] === "string" && value[key].trim()) {
       textParts.push(value[key].trim());
     }
   }
 
-  for (const key of ["content", "parts", "items", "output", "steps"]) {
+  for (const key of [
+    "content",
+    "parts",
+    "items",
+    "output",
+    "steps",
+    "candidates",
+    "message",
+    "messages",
+    "response",
+  ]) {
     if (Array.isArray(value[key])) {
       collectInteractionTextParts(value[key], textParts);
     } else if (typeof value[key] === "object" && value[key] !== null) {
       collectInteractionTextParts(value[key], textParts);
     }
   }
+}
+
+function summarizeGeminiResponseShape(value, depth = 0) {
+  if (depth > 3) {
+    return "...";
+  }
+
+  if (value === null) {
+    return "null";
+  }
+
+  if (Array.isArray(value)) {
+    const first = value.length > 0 ? summarizeGeminiResponseShape(value[0], depth + 1) : "";
+    return `array(${value.length})${first ? `[${first}]` : ""}`;
+  }
+
+  if (typeof value !== "object") {
+    return typeof value;
+  }
+
+  const entries = Object.entries(value).slice(0, 12);
+  const body = entries
+    .map(([key, child]) => `${key}:${summarizeGeminiResponseShape(child, depth + 1)}`)
+    .join(",");
+
+  return `{${body}}`;
 }
 
 function extractTextFromGemini(responseJson) {
@@ -840,7 +1060,7 @@ function formatDateForSlide(date) {
   return `${year}/${month}/${day}`;
 }
 
-function saveStep2LayoutLog({ rawLogPath, log }) {
+function buildStep2LayoutLogTarget(rawLogPath) {
   const relativeLogPath = sanitizeDataRelativeFilePath(rawLogPath, {
     defaultFileName: "step2-layout-log.json",
   });
@@ -852,9 +1072,22 @@ function saveStep2LayoutLog({ rawLogPath, log }) {
   }
 
   const filePath = resolveDataFilePath(DATA_DIR, relativeLogPath);
-  fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  fs.writeFileSync(filePath, JSON.stringify(log, null, 2), "utf8");
-  return path.relative(ROOT_DIR, filePath);
+  const relativeLogDir = path.posix.dirname(relativeLogPath);
+  const relativeArtifactDir = path.posix.join(relativeLogDir === "." ? "" : relativeLogDir, "logs");
+  const artifactDir = resolveDataSubdir(DATA_DIR, relativeArtifactDir);
+
+  return {
+    filePath,
+    artifactDir,
+    relativeLogPath: path.relative(ROOT_DIR, filePath),
+    relativeArtifactDir: path.relative(ROOT_DIR, artifactDir),
+  };
+}
+
+function saveStep2LayoutLog({ target, log }) {
+  fs.mkdirSync(path.dirname(target.filePath), { recursive: true });
+  fs.writeFileSync(target.filePath, JSON.stringify(log, null, 2), "utf8");
+  return target.relativeLogPath;
 }
 
 function ensureMarkdownExtension(fileName) {
