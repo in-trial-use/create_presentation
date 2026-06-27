@@ -7,6 +7,7 @@ const slideTitleInput = document.getElementById("slide-title");
 const affiliationInput = document.getElementById("affiliation");
 const presenterNameInput = document.getElementById("presenter-name");
 const slideFlowInput = document.getElementById("slide-flow");
+const step2LayoutLogPathInput = document.getElementById("step2-layout-log-path");
 const slidesStatusElement = document.getElementById("slides-status");
 const slidesOutputStatusElement = document.getElementById("slides-output-status");
 const slidesOutputElement = document.getElementById("slides-output");
@@ -29,6 +30,7 @@ slidesForm.addEventListener("submit", async (event) => {
     slideTitleInput.value.trim() || inferSlideTitleFromFile(file) || "タイトル未入力";
   const affiliation = affiliationInput.value.trim() || "所属未入力";
   const presenterName = presenterNameInput.value.trim() || "発表者未入力";
+  const layoutLogPath = step2LayoutLogPathInput.value.trim();
 
   if (!file) {
     setSlidesStatus("Step 2用のPDFファイルを選んでください。", true);
@@ -59,6 +61,7 @@ slidesForm.addEventListener("submit", async (event) => {
         slideTitle,
         affiliation,
         presenterName,
+        layoutLogPath,
       }),
     });
 
@@ -132,6 +135,7 @@ function setStep2Loading(isLoading) {
   slideTitleInput.disabled = isLoading;
   affiliationInput.disabled = isLoading;
   presenterNameInput.disabled = isLoading;
+  step2LayoutLogPathInput.disabled = isLoading;
   step2Shared.slideSourceInput.disabled = isLoading;
   slideFlowInput.disabled = isLoading;
 }
@@ -156,13 +160,14 @@ function buildStep2CompletionMessage(data) {
   const attempts = Array.isArray(validation.attempts) ? validation.attempts : [];
   const lastAttempt = attempts[attempts.length - 1];
   const attemptText = attempts.length > 0 ? `${attempts.length}回検証` : "検証なし";
+  const logText = validation.logPath ? ` ログ: ${validation.logPath}` : "";
 
   if (validation.ok) {
-    return `完了: ${data.model} で生成し、PDFレイアウト検証もOKです（${attemptText}）。`;
+    return `完了: ${data.model} で生成し、PDFレイアウト検証もOKです（${attemptText}）。${logText}`;
   }
 
   const firstIssue = lastAttempt?.issues?.[0]?.message || validation.warning || "手動確認が必要です。";
-  return `生成しましたが、PDFレイアウト検証に警告があります（${attemptText}）。${firstIssue}`;
+  return `生成しましたが、PDFレイアウト検証に警告があります（${attemptText}）。${firstIssue}${logText}`;
 }
 
 function inferSlideTitleFromFile(file) {

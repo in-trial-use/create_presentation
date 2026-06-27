@@ -8,6 +8,12 @@ const {
 const { buildStep3Prompt } = require("./prompts/build-step3-prompt");
 const { extractFiguresFromPdf } = require("./lib/pdf-figure-extractor");
 const { refineStep2MarkdownWithLayoutLoop } = require("./lib/step2-layout-refiner");
+const {
+  sanitizeDataBasePath,
+  sanitizeDataRelativeFilePath,
+  resolveDataSubdir,
+  resolveDataFilePath,
+} = require("./lib/data-paths");
 
 const ROOT_DIR = __dirname;
 const PUBLIC_DIR = path.join(ROOT_DIR, "public");
@@ -148,6 +154,7 @@ async function handleSlideGeneration(req, res) {
   const affiliation = String(body.affiliation || "所属未入力").trim() || "所属未入力";
   const presenterName = String(body.presenterName || "発表者未入力").trim() || "発表者未入力";
   const title = String(body.slideTitle || "").trim() || deriveSlideTitle(fileName);
+  const layoutLogPath = String(body.layoutLogPath || "").trim();
 
   if (!pdfBase64) {
     return sendJson(res, 400, {
@@ -206,11 +213,20 @@ async function handleSlideGeneration(req, res) {
     stripMarkdownCodeFence,
     maxAttempts: STEP2_LAYOUT_MAX_ATTEMPTS,
   });
+  const savedLayoutLogPath = layoutLogPath
+    ? saveStep2LayoutLog({
+        rawLogPath: layoutLogPath,
+        log: refined.trace,
+      })
+    : "";
 
   return sendJson(res, 200, {
     model,
     output: refined.markdown,
-    validation: refined.validation,
+    validation: {
+      ...refined.validation,
+      logPath: savedLayoutLogPath,
+    },
   });
 }
 
@@ -243,7 +259,7 @@ async function handleSaveSlide(req, res) {
     });
   }
 
-  const baseName = sanitizeFileName(rawBaseName);
+  const baseName = sanitizeDataBasePath(rawBaseName);
   const fileName = ensureMarkdownExtension(rawSuffix);
 
   if (!baseName || !fileName) {
@@ -252,7 +268,7 @@ async function handleSaveSlide(req, res) {
     });
   }
 
-  const targetDir = path.join(DATA_DIR, baseName);
+  const targetDir = resolveDataSubdir(DATA_DIR, baseName);
   fs.mkdirSync(targetDir, { recursive: true });
   const filePath = path.join(targetDir, fileName);
   fs.writeFileSync(filePath, content, "utf8");
@@ -306,8 +322,8 @@ async function handleFigureExtraction(req, res) {
     });
   }
 
-  const baseName = sanitizeFileName(rawBaseName) || "sample";
-  const baseDirPath = path.join(DATA_DIR, baseName);
+  const baseName = sanitizeDataBasePath(rawBaseName) || "sample";
+  const baseDirPath = resolveDataSubdir(DATA_DIR, baseName);
   const assetDirName = "step3-assets";
   const assetDirPath = path.join(baseDirPath, assetDirName);
   fs.mkdirSync(baseDirPath, { recursive: true });
@@ -744,15 +760,21 @@ function formatDateForSlide(date) {
   return `${year}/${month}/${day}`;
 }
 
-function sanitizeFileName(fileName) {
-  const basename = path.basename(fileName, path.extname(fileName));
-  return basename
-    .normalize("NFKC")
-    .replace(/\s+/g, "-")
-    .replace(/[\/\\:*?"<>|]/g, "")
-    .replace(/[^\p{L}\p{N}_-]/gu, "")
-    .replace(/-+/g, "-")
-    .replace(/^-+|-+$/g, "");
+function saveStep2LayoutLog({ rawLogPath, log }) {
+  const relativeLogPath = sanitizeDataRelativeFilePath(rawLogPath, {
+    defaultFileName: "step2-layout-log.json",
+  });
+
+  if (!relativeLogPath) {
+    const error = new Error("利用できないログ保存先です。");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const filePath = resolveDataFilePath(DATA_DIR, relativeLogPath);
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, JSON.stringify(log, null, 2), "utf8");
+  return path.relative(ROOT_DIR, filePath);
 }
 
 function ensureMarkdownExtension(fileName) {
