@@ -16,7 +16,7 @@ Step 2は単体でPDFを受け取って生成できます。Step 1の要約や�
 
 Step 1 / Step 2 / Step 2のレイアウト検証では、PDFをGeminiへ直接渡します。Step 2のレイアウト検証では、元論文PDFと、生成Markdownを一時PDFへ変換したスライドPDFの両方をGeminiに直接渡して目視相当の判定・修正を行います。PDFをテキスト化してGeminiへ読ませることはしません。
 
-Step 2の「検証ログ保存先」に `v2/CNN` のようなディレクトリを指定すると、判定・修正ループの入出力JSONを `data/v2/CNN/step2-layout-log.json` に保存します。各試行で実際にレンダリングしたMarkdownとPDFは同じディレクトリの `logs/` 配下に `step2_1.md`, `step2_1.pdf` のように保存します。
+Step 2の「検証ログ保存先」に `v2/CNN` のようなディレクトリを指定すると、生成されたStep 2 Markdownを `data/v2/CNN/step2.md` に保存し、判定・修正ループの入出力JSONを `data/v2/CNN/step2-layout-log.json` に保存します。各試行で実際にレンダリングしたMarkdownとPDFは同じディレクトリの `logs/` 配下に `step2_1.md`, `step2_1.pdf` のように保存します。
 
 ## 環境変数
 

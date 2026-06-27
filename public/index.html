@@ -125,7 +125,7 @@
           </label>
 
           <label class="field">
-            <span>Step 2検証ログ保存先（任意）</span>
+            <span>Step 2検証ログ保存先</span>
             <input id="step2-layout-log-path" name="step2-layout-log-path" type="text" placeholder="例: v2/CNN" />
           </label>
 
@@ -137,28 +137,8 @@
         </div>
       </section>
 
-      <section class="panel output-panel">
-        <div class="output-header">
-          <h2>Step 2の出力</h2>
-          <div class="button-row">
-            <button id="slides-copy-button" type="button" class="secondary-button">コピー</button>
-          </div>
-        </div>
-        <div class="status-wrap output-status-wrap">
-          <p id="slides-output-status" class="status"></p>
-        </div>
-        <div class="save-row">
-          <label class="field save-field">
-            <span>保存ベース名</span>
-            <input id="slides-base-name" name="slides-base-name" type="text" placeholder="sample" />
-          </label>
-          <button id="slides-save-button" type="button" class="secondary-button">data/~~~/step2.md として保存</button>
-        </div>
-        <label class="field">
-          <span>Step 2のMarkdown（編集可）</span>
-          <textarea id="slides-output" class="output-editor" rows="18" spellcheck="false">まだMarp Markdownはありません。</textarea>
-        </label>
-      </section>
+      <input id="slides-base-name" name="slides-base-name" type="hidden" value="sample" />
+      <textarea id="slides-output" hidden>まだMarp Markdownはありません。</textarea>
 
       <section class="panel">
         <div class="panel-heading">

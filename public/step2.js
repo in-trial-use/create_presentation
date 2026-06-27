@@ -9,11 +9,8 @@ const presenterNameInput = document.getElementById("presenter-name");
 const slideFlowInput = document.getElementById("slide-flow");
 const step2LayoutLogPathInput = document.getElementById("step2-layout-log-path");
 const slidesStatusElement = document.getElementById("slides-status");
-const slidesOutputStatusElement = document.getElementById("slides-output-status");
 const slidesOutputElement = document.getElementById("slides-output");
 const slidesSubmitButton = document.getElementById("slides-submit-button");
-const slidesCopyButton = document.getElementById("slides-copy-button");
-const slidesSaveButton = document.getElementById("slides-save-button");
 
 bootstrapStep2();
 
@@ -39,7 +36,6 @@ slidesForm.addEventListener("submit", async (event) => {
 
   setStep2Loading(true);
   setSlidesStatus("PDFを参照しながらMarp Markdownを生成しています...", false);
-  setSlidesOutputStatus("", false);
   slidesOutputElement.value = "Geminiがスライド原稿を組み立てています...";
 
   try {
@@ -82,28 +78,6 @@ slidesForm.addEventListener("submit", async (event) => {
   }
 });
 
-slidesCopyButton.addEventListener("click", async () => {
-  await step2Shared.copyOutput({
-    text: slidesOutputElement.value.trim(),
-    emptyMessage: "まだMarp Markdownはありません。",
-    onSuccess: () => setSlidesOutputStatus("Marp Markdownをコピーしました。", false),
-    onError: (message) => setSlidesOutputStatus(message, true),
-  });
-});
-
-slidesSaveButton.addEventListener("click", async () => {
-  await step2Shared.saveMarkdownToData({
-    baseName: step2Shared.slidesBaseNameInput.value.trim(),
-    suffix: "step2",
-    text: slidesOutputElement.value.trim(),
-    onSuccess: (savedPath, normalizedBaseName) => {
-      step2Shared.slidesBaseNameInput.value = normalizedBaseName;
-      setSlidesOutputStatus(`${savedPath} に保存しました。`, false);
-    },
-    onError: (message) => setSlidesOutputStatus(message, true),
-  });
-});
-
 function bootstrapStep2() {
   if (!eventDateInput.value.trim()) {
     eventDateInput.value = step2Shared.formatToday();
@@ -126,10 +100,10 @@ function bootstrapStep2() {
 
 function setStep2Loading(isLoading) {
   slidesSubmitButton.disabled = isLoading;
-  slidesCopyButton.disabled = isLoading;
-  slidesSaveButton.disabled = isLoading;
   step2Shared.slidePdfFileInput.disabled = isLoading;
-  step2Shared.slidesBaseNameInput.disabled = isLoading;
+  if (step2Shared.slidesBaseNameInput) {
+    step2Shared.slidesBaseNameInput.disabled = isLoading;
+  }
   eventNameInput.disabled = isLoading;
   eventDateInput.disabled = isLoading;
   slideTitleInput.disabled = isLoading;
@@ -145,11 +119,6 @@ function setSlidesStatus(message, isError) {
   slidesStatusElement.dataset.error = isError ? "true" : "false";
 }
 
-function setSlidesOutputStatus(message, isError) {
-  slidesOutputStatusElement.textContent = message;
-  slidesOutputStatusElement.dataset.error = isError ? "true" : "false";
-}
-
 function buildStep2CompletionMessage(data) {
   const validation = data.validation;
 
@@ -160,15 +129,16 @@ function buildStep2CompletionMessage(data) {
   const attempts = Array.isArray(validation.attempts) ? validation.attempts : [];
   const lastAttempt = attempts[attempts.length - 1];
   const attemptText = attempts.length > 0 ? `${attempts.length}回検証` : "検証なし";
+  const markdownText = validation.markdownPath ? ` Markdown: ${validation.markdownPath}` : "";
   const logText = validation.logPath ? ` ログ: ${validation.logPath}` : "";
   const artifactText = validation.artifactDir ? ` 試行ファイル: ${validation.artifactDir}` : "";
 
   if (validation.ok) {
-    return `完了: ${data.model} で生成し、PDFレイアウト検証もOKです（${attemptText}）。${logText}${artifactText}`;
+    return `完了: ${data.model} で生成し、PDFレイアウト検証もOKです（${attemptText}）。${markdownText}${logText}${artifactText}`;
   }
 
   const firstIssue = lastAttempt?.issues?.[0]?.message || validation.warning || "手動確認が必要です。";
-  return `生成しましたが、PDFレイアウト検証に警告があります（${attemptText}）。${firstIssue}${logText}${artifactText}`;
+  return `生成しましたが、PDFレイアウト検証に警告があります（${attemptText}）。${firstIssue}${markdownText}${logText}${artifactText}`;
 }
 
 function inferSlideTitleFromFile(file) {

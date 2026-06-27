@@ -217,6 +217,12 @@ async function handleSlideGeneration(req, res) {
     artifactDir: layoutLogTarget?.artifactDir || "",
     maxAttempts: STEP2_LAYOUT_MAX_ATTEMPTS,
   });
+  const savedStep2MarkdownPath = layoutLogTarget
+    ? saveStep2Markdown({
+        target: layoutLogTarget,
+        markdown: refined.markdown,
+      })
+    : "";
   const savedLayoutLogPath = layoutLogTarget
     ? saveStep2LayoutLog({
         target: layoutLogTarget,
@@ -231,6 +237,7 @@ async function handleSlideGeneration(req, res) {
       ...refined.validation,
       logPath: savedLayoutLogPath,
       artifactDir: layoutLogTarget?.relativeArtifactDir || "",
+      markdownPath: savedStep2MarkdownPath,
     },
   });
 }
@@ -1075,13 +1082,22 @@ function buildStep2LayoutLogTarget(rawLogPath) {
   const relativeLogDir = path.posix.dirname(relativeLogPath);
   const relativeArtifactDir = path.posix.join(relativeLogDir === "." ? "" : relativeLogDir, "logs");
   const artifactDir = resolveDataSubdir(DATA_DIR, relativeArtifactDir);
+  const markdownPath = path.join(path.dirname(filePath), "step2.md");
 
   return {
     filePath,
+    markdownPath,
     artifactDir,
     relativeLogPath: path.relative(ROOT_DIR, filePath),
+    relativeMarkdownPath: path.relative(ROOT_DIR, markdownPath),
     relativeArtifactDir: path.relative(ROOT_DIR, artifactDir),
   };
+}
+
+function saveStep2Markdown({ target, markdown }) {
+  fs.mkdirSync(path.dirname(target.markdownPath), { recursive: true });
+  fs.writeFileSync(target.markdownPath, markdown, "utf8");
+  return target.relativeMarkdownPath;
 }
 
 function saveStep2LayoutLog({ target, log }) {
