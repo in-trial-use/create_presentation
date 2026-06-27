@@ -10,7 +10,7 @@
   --kaira-gray: #a8a8a8;
   --kaira-gray-bg: #c9c9c9;
   --kaira-white: #ffffff;
-  --kaira-logo-url: url("../../../templates/KaiRA_logo_blue_trans.png");
+  --kaira-logo-url: url("../templates/KaiRA_logo_blue_trans.png");
   --kaira-logo-scale: 3;
   --kaira-content-logo-reserve: calc(150px * var(--kaira-logo-scale));
   --kaira-content-logo-box: calc(40px * var(--kaira-logo-scale));
