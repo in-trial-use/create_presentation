@@ -69,7 +69,7 @@ slidesForm.addEventListener("submit", async (event) => {
     }
 
     slidesOutputElement.value = data.output;
-    setSlidesStatus(`完了: ${data.model} でMarp Markdownを生成しました。`, false);
+    setSlidesStatus(buildStep2CompletionMessage(data), !data.validation?.ok);
     document.dispatchEvent(new Event("step2:updated"));
   } catch (error) {
     slidesOutputElement.value = "エラーが発生しました。";
@@ -144,6 +144,25 @@ function setSlidesStatus(message, isError) {
 function setSlidesOutputStatus(message, isError) {
   slidesOutputStatusElement.textContent = message;
   slidesOutputStatusElement.dataset.error = isError ? "true" : "false";
+}
+
+function buildStep2CompletionMessage(data) {
+  const validation = data.validation;
+
+  if (!validation) {
+    return `完了: ${data.model} でMarp Markdownを生成しました。`;
+  }
+
+  const attempts = Array.isArray(validation.attempts) ? validation.attempts : [];
+  const lastAttempt = attempts[attempts.length - 1];
+  const attemptText = attempts.length > 0 ? `${attempts.length}回検証` : "検証なし";
+
+  if (validation.ok) {
+    return `完了: ${data.model} で生成し、PDFレイアウト検証もOKです（${attemptText}）。`;
+  }
+
+  const firstIssue = lastAttempt?.issues?.[0]?.message || validation.warning || "手動確認が必要です。";
+  return `生成しましたが、PDFレイアウト検証に警告があります（${attemptText}）。${firstIssue}`;
 }
 
 function inferSlideTitleFromFile(file) {

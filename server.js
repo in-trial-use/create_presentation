@@ -7,11 +7,13 @@ const {
 } = require("./prompts/build-slide-prompt");
 const { buildStep3Prompt } = require("./prompts/build-step3-prompt");
 const { extractFiguresFromPdf } = require("./lib/pdf-figure-extractor");
+const { refineStep2MarkdownWithLayoutLoop } = require("./lib/step2-layout-refiner");
 
 const ROOT_DIR = __dirname;
 const PUBLIC_DIR = path.join(ROOT_DIR, "public");
 const DATA_DIR = path.join(ROOT_DIR, "data");
 const MAX_BODY_BYTES = 80 * 1024 * 1024;
+const STEP2_LAYOUT_MAX_ATTEMPTS = Number(process.env.STEP2_LAYOUT_MAX_ATTEMPTS || 3);
 
 loadEnvFile(path.join(ROOT_DIR, ".env"));
 const DEFAULT_PORT = Number(process.env.PORT || 3000);
@@ -185,16 +187,30 @@ async function handleSlideGeneration(req, res) {
       },
     ],
   });
+  const firstMarkdown = buildFixedSlidePrefix({
+    eventName,
+    eventDate,
+    affiliation,
+    presenterName,
+    title,
+  }) + normalizeStep2BodyOutput(output);
+  const refined = await refineStep2MarkdownWithLayoutLoop({
+    apiKey,
+    model,
+    markdown: firstMarkdown,
+    sourcePdfBase64: pdfBase64,
+    sourceFileName: fileName,
+    rootDir: ROOT_DIR,
+    generateText: generateGeminiText,
+    normalizeMarkdown: normalizeMarpOutput,
+    stripMarkdownCodeFence,
+    maxAttempts: STEP2_LAYOUT_MAX_ATTEMPTS,
+  });
 
   return sendJson(res, 200, {
     model,
-    output: buildFixedSlidePrefix({
-      eventName,
-      eventDate,
-      affiliation,
-      presenterName,
-      title,
-    }) + normalizeStep2BodyOutput(output),
+    output: refined.markdown,
+    validation: refined.validation,
   });
 }
 
