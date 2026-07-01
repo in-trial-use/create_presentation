@@ -125,30 +125,41 @@ paginate: true
 ## 手法の詳細1
 <p class="dense-lead">2次元画像をパッチ列へ変換し、位置情報を足してTransformerへ入力する。</p>
 
-<div class="equation-grid">
-  <div class="equation-panel">
-    <h3>パッチ数</h3>
-    <p>画像サイズを H x W、パッチサイズを P x P とすると系列長は次で決まる。</p>
+### パッチ数
+
+画像サイズを H x W、パッチサイズを P x P とすると、パッチ数 N は次で決まる。
 
 $$
-N = \frac{HW}{P^2}
+N = \frac{H W}{P^{2}}
 $$
 
-  </div>
-  <div class="equation-panel">
-    <h3>初期系列</h3>
-    <p>class token、各パッチの線形射影、位置埋め込みを足して入力にする。</p>
+- $H, W$: 入力画像の高さと幅
+- $P$: 1パッチの一辺
+- $N$: Transformerへ入る画像パッチの個数
+
+パッチサイズを小さくすると系列長が増え、計算量は増えるが細かい情報を扱いやすくなる。
+
+---
+<!-- class: content-gray show-page -->
+
+## 手法の詳細1: 初期系列
+<p class="dense-lead">class token、パッチ埋め込み、位置埋め込みを足してTransformerの入力系列を作る。</p>
 
 $$
-z_0 = [x_{\mathrm{class}}; x_p^1E; \cdots; x_p^NE] + E_{\mathrm{pos}}
+z_{0} =
+\left[
+x_{\mathrm{class}};
+e_{1};
+\cdots;
+e_{N}
+\right]
++ E_{\mathrm{pos}}
 $$
 
-  </div>
-</div>
-
-<div class="math-note">パッチサイズを小さくすると系列長が増え、計算量は増えるが細かい情報を扱いやすくなる。</div>
-
-<div class="math-note">記号: H,W は画像の高さ・幅、P はパッチ一辺、N はパッチ数、x_p^i はi番目のパッチ、E は線形射影、E_pos は位置埋め込み。</div>
+- $z_{0}$: Transformer Encoderへ入力する最初のtoken列
+- $x_{\mathrm{class}}$: 画像全体の表現を集約するclass token
+- $e_{i}$: $i$ 番目の画像パッチを線形射影した埋め込み
+- $E_{\mathrm{pos}}$: 各tokenの位置を表す位置埋め込み
 
 ---
 <!-- class: content-gray show-page -->
@@ -157,11 +168,11 @@ $$
 <p class="dense-lead">各層では、LayerNorm、Multi-head Self-Attention、MLP、残差接続を交互に使う。</p>
 
 $$
-z'_\ell = \mathrm{MSA}(\mathrm{LN}(z_{\ell-1})) + z_{\ell-1}
+u_{\ell} = \mathrm{MSA}(\mathrm{LN}(z_{\ell - 1})) + z_{\ell - 1}
 $$
 
 $$
-z_\ell = \mathrm{MLP}(\mathrm{LN}(z'_\ell)) + z'_\ell
+z_{\ell} = \mathrm{MLP}(\mathrm{LN}(u_{\ell})) + u_{\ell}
 $$
 
 <div class="mini-flow">
@@ -171,7 +182,10 @@ $$
   <div class="mini-step"><div class="label">Residual</div><div class="sub">各block後に足し戻す</div></div>
 </div>
 
-<div class="math-note">記号: z_{l-1} は前層の入力、z'_l はAttention後、z_l はMLP後、l は層番号、LN/MSA/MLPは各処理を表す。</div>
+- $z_{\ell - 1}$: 前層から渡される入力表現
+- $u_{\ell}$: Self-Attention後の中間表現
+- $z_{\ell}$: MLP後に次層へ渡される出力表現
+- $\mathrm{LN}$, $\mathrm{MSA}$, $\mathrm{MLP}$: LayerNorm、Multi-head Self-Attention、MLPを表す
 
 ---
 <!-- class: content-gray show-page -->
@@ -206,14 +220,26 @@ $$
 ## 結果
 <p class="dense-lead">十分な規模で事前学習したViTは、複数の画像認識ベンチマークで高い性能を示した。</p>
 
-<div class="layout-grid four">
-  <div class="insight-card emphasis"><h3>ImageNet</h3><span class="big-number">88.55%</span><p class="card-note">best model</p></div>
-  <div class="insight-card"><h3>ImageNet-ReaL</h3><span class="big-number">90.72%</span><p class="card-note">cleaned-up labels</p></div>
-  <div class="insight-card"><h3>CIFAR-100</h3><span class="big-number">94.55%</span><p class="card-note">transfer</p></div>
-  <div class="insight-card"><h3>VTAB</h3><span class="big-number">77.63%</span><p class="card-note">19 tasks</p></div>
-</div>
+<div class="figure-placeholder">[ここに論文Table 2: popular image classification benchmarks の比較表を入れる]</div>
 
-<div class="callout">JFT-300Mで事前学習したViTは、ResNetベースの強いbaselineを上回りつつ、事前学習コストも有利だった。</div>
+<div class="two-pane">
+  <div class="pane emphasis">
+    <h3>表で見る点</h3>
+    <ul>
+      <li>ImageNet、CIFAR-100、VTABなどで比較する</li>
+      <li>ViT-L/16とBiT-Lなど強いCNN系を比べる</li>
+      <li>平均値と標準偏差で性能を報告する</li>
+    </ul>
+  </div>
+  <div class="pane">
+    <h3>主な読み取り</h3>
+    <ul>
+      <li>JFT-300M事前学習でViTは高い転移性能を示す</li>
+      <li>大規模データではCNN系baselineを上回る</li>
+      <li>精度だけでなく事前学習コストも議論される</li>
+    </ul>
+  </div>
+</div>
 
 ---
 <!-- class: content-gray show-page -->
