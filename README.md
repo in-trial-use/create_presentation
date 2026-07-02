@@ -6,11 +6,19 @@ arXiv論文のPDFをローカルで読み込み、Geminiで要約し、その結
 
 1. Step 1でPDFをGeminiに送り、論文の背景・手法・結果などを整理
 2. Step 2で専用に選んだPDFを一次情報として参照しながら、KaiRA向けMarpテンプレートのスライドMarkdownを生成
-3. Step 3で、画面上のStep 2 Markdownをそのまま入力として使い、Step 3専用PDFまたはStep 2のPDFから図を抽出
-4. 抽出結果のJSONを確認し、その結果を使って画像付き版を再生成
-5. 必要なら、ユーザーが指定したスライドの流れ・章立てを優先して構成
+3. Step 2の生成結果をサーバー側でPDF化し、数式の崩れや文字の見切れを検証
+4. 検証でNGの場合は、GeminiでMarkdownを修正し、PDF化と検証を最大試行回数まで繰り返す
+5. Step 3で、画面上のStep 2 Markdownをそのまま入力として使い、Step 3専用PDFまたはStep 2のPDFから図を抽出
+6. 抽出結果のJSONを確認し、その結果を使って画像付き版を再生成
+7. 必要なら、ユーザーが指定したスライドの流れ・章立てを優先して構成
 
 Step 2は単体でPDFを受け取って生成できます。Step 1の要約や手入力メモ、流れ指定は任意の補助情報です。step2版とstep3版は `data/<base>/` 配下の別ファイルとして保存できます。
+
+Step 1 / Step 2 / Step 2のレイアウト検証では、PDFをGeminiへ直接渡します。Step 2のレイアウト検証では、元論文PDFと、生成Markdownを一時PDFへ変換したスライドPDFの両方をGeminiに直接渡して目視相当の判定・修正を行います。PDFをテキスト化してGeminiへ読ませることはしません。
+
+Step 2の「検証ログ保存先」に `v2/CNN` のようなディレクトリを指定すると、生成されたStep 2 Markdownを `data/v2/CNN/step2.md` に保存し、判定・修正ループの入出力JSONを `data/v2/CNN/step2-layout-log.json` に保存します。各試行で実際にレンダリングしたMarkdownとPDFは同じディレクトリの `logs/` 配下に `step2_1.md`, `step2_1.pdf` のように保存します。
+
+Step 2生成時は、few-shotの参考例として `data/refined/ViT/step2.md` / `data/refined/ViT/vit.pdf` を利用します。参考例は構成、情報密度、図プレースホルダーの置き方、PPTXで崩れにくい数式表現を寄せるためだけに使い、参考例の内容・数値・主張は生成対象へ流用しないようpromptで制約しています。
 
 ## 環境変数
 
@@ -18,6 +26,7 @@ Step 2は単体でPDFを受け取って生成できます。Step 1の要約や�
 - `GEMINI_MODEL`: 省略時のモデル名。デフォルトは `gemini-2.5-flash`
 - `PORT`: ローカルサーバーのポート。デフォルトは `3000`
 - `HOST`: 待ち受けホスト。デフォルトは `127.0.0.1`
+- `STEP2_LAYOUT_MAX_ATTEMPTS`: Step 2のPDF化・検証・修正ループの最大回数。デフォルトは `3`
 
 ## 起動方法
 
@@ -36,15 +45,18 @@ node server.js
 - `public/slide-shared.js`: Step 2 / Step 3 の共通UI処理
 - `public/step2.js`: Step 2のスライド生成UI
 - `public/step3.js`: Step 3の図抽出と再生成UI
+- `lib/step2-layout-refiner.js`: Step 2のPDF化、レイアウト検証、NG時のMarkdown修正ループ
 - `lib/pdf-figure-extractor.js`: Step 3の図抽出処理（PDF内画像候補の選別ベース）
 - `data/`: 生成したMarp Markdownの保存先
 - `prompts/marp-template.md`: Marpテンプレート本体（frontmatter + スライド骨格）
 - `themes/kaira.css`: 固定のMarpカスタムテーマ
 - `.marprc.yml`: `themeSet` と `allowLocalFiles` の共通設定
 - `prompts/build-slide-prompt.js`: Step 2用のGemini prompt生成
+- `prompts/build-step2-layout-prompt.js`: Step 2のレイアウト判定・修正用Gemini prompt生成
 - `prompts/build-step3-prompt.js`: Step 3用のGemini prompt生成
 
 ## 補足
 
-- Step 1 / Step 2 はPDF本体をGeminiへ渡し、Step 3 はブラウザ側PDF.jsでPDF内部画像を抽出してから候補選別する構成です
+- Step 1 / Step 2 はPDF本体をGeminiへ直接渡し、Step 3 はブラウザ側PDF.jsでPDF内部画像を抽出してから候補選別する構成です
+- Step 2のレイアウト検証には、Marp CLI と Chromium がローカル環境に必要です
 - 大きいPDFではブラウザ経由のbase64送信が重くなるため、次段階ではFiles API化やarXiv URL直接取得に進めるのがおすすめです

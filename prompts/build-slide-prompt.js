@@ -48,6 +48,8 @@ function buildSlidePrompt({
   affiliation,
   presenterName,
   title,
+  referenceExampleName,
+  referenceExampleMarkdown,
 }) {
   return `あなたは、研究論文をもとにMarpスライドを作る専門家です。
 入力される論文PDF、論文要約、発表メモ、希望するスライドの流れを読み取り、発表用のMarp Markdownを日本語で生成してください。
@@ -71,6 +73,11 @@ function buildSlidePrompt({
 - 数式は Markdown の数式記法を使い、HTMLブロックの中には書かない
 - 数式は通常の文章中に $ ... $、独立した式は $$ ... $$ をそのまま書く
 - 例: 出力サイズの計算式: $\\frac{(V - R + 2Z)}{S} + 1$
+- 添字や上付きは省略せず、必ず $x_{p}^{1}$, $P^{2}$, $z_{0}$ のように波括弧で範囲を明示する
+- $x_{p}^{1}$ のように添字と上付きが同じ記号へ重なる式がPPTXで潰れそうな場合は、$e_{i}$ などの中間変数を定義して式を分解する
+- 添字や上付きの直後に半角英字を続けるとPPTXで文字が潰れやすい。$x_{p}^{1} E$ のように、後続が英字の場合は半角スペースを1文字入れる
+- $+$, $-$, $=$, $;$, $,$, $\\cdots$ などの演算子・区切り記号の前後は通常どおりでよい
+- 変数説明はHTMLのdivやspanに入れず、Markdown箇条書きで「- $z_{\\ell}$: ...」のように書く
 - 数式を含むスライドでは、div / span / p などのHTMLブロック内に数式を書いてはいけない
 - 数式を含むスライドでは、two-col や two-top-one-bottom などのHTMLレイアウトを使わず、Markdownだけで組む
 - 引用ブロック (>) を使って数式を囲ってはいけない
@@ -105,6 +112,8 @@ function buildSlidePrompt({
 - 情報が不足する箇所は、無理に断定せず簡潔な保留表現にする
 - 論文PDFそのものを最優先の一次情報として扱う
 - 論文要約や発表メモは補助情報として扱う
+- 参考例が与えられている場合は、スライド構成、情報密度、言い回しの短さ、図プレースホルダーの置き方だけを参考にする
+- 参考例の論文内容、実験結果、固有名詞、数値、主張は今回の出力へ流用しない
 - 希望する流れが論文PDFの内容とずれる場合は、論文内容に沿うように穏当に補正する
 
 標準のスライド構成:
@@ -142,6 +151,7 @@ function buildSlidePrompt({
 - 論文の新規性が伝わるようにする
 - 数字・比較・改善点を優先して書く
 - 冗長な導入は避ける
+- 論文に書かれていない、飛躍した主張は書かない
 
 以下の固定済み先頭部分はアプリ側ですでに挿入します。
 あなたはこの続きだけを出力してください。
@@ -163,8 +173,14 @@ ${buildFixedSlidePrefix({
 
 ${extractBodyTemplate(marpTemplate)}
 
-以下の論文PDFもあわせて参照してください。
-- ファイル名: ${fileName || "paper.pdf"}
+${buildReferenceExampleSection({
+  referenceExampleName,
+  referenceExampleMarkdown,
+})}
+
+添付PDFの扱い:
+- 添付1: 今回スライド化する対象論文PDF（${fileName || "paper.pdf"}）。内容の一次情報として最優先する
+- 添付2以降がある場合: 参考例の元論文PDF。参考Markdownの抽象度や圧縮の仕方を見るためだけに使う
 
 以下は論文の要約・整理結果です。利用できる事実情報として優先してください。
 
@@ -173,6 +189,28 @@ ${analysis || "指定なし"}
 以下はユーザーが指定した「希望するスライドの流れ・章立て」です。空でなければ、この流れを優先してスライド構成を決めてください。
 
 ${slideFlow || "指定なし"}`;
+}
+
+function buildReferenceExampleSection({
+  referenceExampleName,
+  referenceExampleMarkdown,
+}) {
+  if (!referenceExampleMarkdown) {
+    return "";
+  }
+
+  return `参考スライド例（${referenceExampleName || "example"}）:
+以下はKaiRAテンプレートで作成済みのStep 2 Markdown例です。
+この例は、スライド枚数、章立て、1枚あたりの文字量、図プレースホルダー、数式説明、見出しの短さだけを参考にしてください。
+内容・数値・固有名詞・結果・主張は今回の論文へ流用してはいけません。
+
+${stripExampleFrontmatter(referenceExampleMarkdown).slice(0, 24000)}`;
+}
+
+function stripExampleFrontmatter(markdown) {
+  return String(markdown || "")
+    .replace(/^---\s*[\s\S]*?\s*---\s*/, "")
+    .trim();
 }
 
 function extractBodyTemplate(template) {
