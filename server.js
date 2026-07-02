@@ -18,11 +18,13 @@ const {
 const ROOT_DIR = __dirname;
 const PUBLIC_DIR = path.join(ROOT_DIR, "public");
 const DATA_DIR = path.join(ROOT_DIR, "data");
-const STEP2_REFERENCE_EXAMPLE = {
-  name: "ResNet",
-  markdownPath: path.join(DATA_DIR, "refined", "ResNet", "step2.md"),
-  paperPdfPath: path.join(DATA_DIR, "ResNet", "ResNet.pdf"),
-};
+const STEP2_REFERENCE_EXAMPLES = [
+  {
+    name: "ViT",
+    markdownPath: path.join(DATA_DIR, "refined", "ViT", "step2.md"),
+    paperPdfPath: path.join(DATA_DIR, "refined", "ViT", "vit.pdf"),
+  },
+];
 const MAX_BODY_BYTES = 80 * 1024 * 1024;
 const STEP2_LAYOUT_MAX_ATTEMPTS = Number(process.env.STEP2_LAYOUT_MAX_ATTEMPTS || 3);
 const GEMINI_INTERACTION_POLL_INTERVAL_MS = Number(process.env.GEMINI_INTERACTION_POLL_INTERVAL_MS || 2000);
@@ -175,7 +177,7 @@ async function handleSlideGeneration(req, res) {
     });
   }
 
-  const referenceExample = loadStep2ReferenceExample();
+  const referenceExamples = loadStep2ReferenceExamples();
   const prompt = buildSlidePrompt({
     analysis,
     slideFlow,
@@ -185,8 +187,8 @@ async function handleSlideGeneration(req, res) {
     affiliation,
     presenterName,
     title,
-    referenceExampleName: referenceExample?.name || "",
-    referenceExampleMarkdown: referenceExample?.markdown || "",
+    referenceExampleName: referenceExamples.map((example) => example.name).join(", "),
+    referenceExampleMarkdown: buildReferenceExamplesMarkdown(referenceExamples),
   });
   const layoutLogTarget = layoutLogPath ? buildStep2LayoutLogTarget(layoutLogPath) : null;
 
@@ -203,7 +205,7 @@ async function handleSlideGeneration(req, res) {
           data: pdfBase64,
         },
       },
-      ...buildStep2ReferenceExampleParts(referenceExample),
+      ...buildStep2ReferenceExampleParts(referenceExamples),
       {
         text: prompt,
       },
@@ -1118,38 +1120,52 @@ function saveStep2LayoutLog({ target, log }) {
   return target.relativeLogPath;
 }
 
-function loadStep2ReferenceExample() {
-  if (!fs.existsSync(STEP2_REFERENCE_EXAMPLE.markdownPath) || !fs.existsSync(STEP2_REFERENCE_EXAMPLE.paperPdfPath)) {
-    return null;
-  }
-
-  return {
-    name: STEP2_REFERENCE_EXAMPLE.name,
-    markdownPath: STEP2_REFERENCE_EXAMPLE.markdownPath,
-    paperPdfPath: STEP2_REFERENCE_EXAMPLE.paperPdfPath,
-    markdown: fs.readFileSync(STEP2_REFERENCE_EXAMPLE.markdownPath, "utf8"),
-    paperPdfBase64: fs.readFileSync(STEP2_REFERENCE_EXAMPLE.paperPdfPath).toString("base64"),
-  };
+function loadStep2ReferenceExamples() {
+  return STEP2_REFERENCE_EXAMPLES
+    .filter((example) => fs.existsSync(example.markdownPath) && fs.existsSync(example.paperPdfPath))
+    .map((example) => ({
+      name: example.name,
+      markdownPath: example.markdownPath,
+      paperPdfPath: example.paperPdfPath,
+      markdown: fs.readFileSync(example.markdownPath, "utf8"),
+      paperPdfBase64: fs.readFileSync(example.paperPdfPath).toString("base64"),
+    }));
 }
 
-function buildStep2ReferenceExampleParts(referenceExample) {
-  if (!referenceExample?.paperPdfBase64) {
+function buildReferenceExamplesMarkdown(referenceExamples) {
+  return referenceExamples
+    .map((example, index) => {
+      return [
+        `## 参考例${index + 1}: ${example.name}`,
+        `Markdown: ${path.relative(ROOT_DIR, example.markdownPath)}`,
+        example.markdown,
+      ].join("\n\n");
+    })
+    .join("\n\n---\n\n");
+}
+
+function buildStep2ReferenceExampleParts(referenceExamples) {
+  if (!Array.isArray(referenceExamples) || referenceExamples.length === 0) {
     return [];
   }
 
-  return [
-    {
-      text:
-        `添付2: 参考例の元論文PDF（${referenceExample.name}）。` +
-        "これは内容を流用するためではなく、参考スライドMarkdownがどの程度論文内容を圧縮しているかを見るための例です。",
-    },
-    {
-      inline_data: {
-        mime_type: "application/pdf",
-        data: referenceExample.paperPdfBase64,
+  return referenceExamples.flatMap((example, index) => {
+    const attachmentNumber = index + 2;
+
+    return [
+      {
+        text:
+          `添付${attachmentNumber}: 参考例${index + 1}の元論文PDF（${example.name}）。` +
+          "これは内容を流用するためではなく、参考スライドMarkdownがどの程度論文内容を圧縮しているかを見るための例です。",
       },
-    },
-  ];
+      {
+        inline_data: {
+          mime_type: "application/pdf",
+          data: example.paperPdfBase64,
+        },
+      },
+    ];
+  });
 }
 
 function ensureMarkdownExtension(fileName) {

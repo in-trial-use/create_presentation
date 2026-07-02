@@ -18,7 +18,7 @@ Step 1 / Step 2 / Step 2のレイアウト検証では、PDFをGeminiへ直接�
 
 Step 2の「検証ログ保存先」に `v2/CNN` のようなディレクトリを指定すると、生成されたStep 2 Markdownを `data/v2/CNN/step2.md` に保存し、判定・修正ループの入出力JSONを `data/v2/CNN/step2-layout-log.json` に保存します。各試行で実際にレンダリングしたMarkdownとPDFは同じディレクトリの `logs/` 配下に `step2_1.md`, `step2_1.pdf` のように保存します。
 
-Step 2生成時は、few-shotの参考例として `data/refined/ResNet/step2.md` と `data/ResNet/ResNet.pdf` を利用します。参考例は構成、情報密度、図プレースホルダーの置き方を寄せるためだけに使い、ResNetの内容・数値・主張は生成対象へ流用しないようpromptで制約しています。
+Step 2生成時は、few-shotの参考例として `data/refined/ViT/step2.md` / `data/refined/ViT/vit.pdf` を利用します。参考例は構成、情報密度、図プレースホルダーの置き方、PPTXで崩れにくい数式表現を寄せるためだけに使い、参考例の内容・数値・主張は生成対象へ流用しないようpromptで制約しています。
 
 ## 環境変数
 
